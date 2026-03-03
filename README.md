@@ -2,6 +2,7 @@
 
 A modern Android application for personal and shared budget management. FinTracker helps individuals and groups track income and expenses, set spending limits, and gain clear insights into their financial habits through intuitive data visualization.
 
+
 ---
 
 ## Key Features
