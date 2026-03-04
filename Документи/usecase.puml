@@ -1,0 +1,61 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+
+actor Guest
+actor User
+actor Admin
+actor "Bank Application" as Bank
+
+User <|-- Admin
+
+rectangle FinTracker {
+
+  ' --- Authentication ---
+  Guest --> (Register)
+  Guest --> (Login)
+
+  ' --- Account Management ---
+  User --> (Create Account)
+  User --> (View Dashboard)
+  User --> (View Balance)
+
+  ' --- Tag Management ---
+  User --> (Manage Tags)
+
+  ' --- Transactions ---
+  User --> (Add Transaction)
+  (Add Transaction) --> (Add Income) : <<include>>
+  (Add Transaction) --> (Add Expense) : <<include>>
+  (Add Expense) --> (Calculate Work Time Cost) : <<include>>
+
+  User --> (Search Transactions)
+
+  ' --- Shared Accounts ---
+  User --> (Create Shared Account)
+  User --> (Join Shared Account)
+
+  Admin --> (Manage Shared Account)
+  (Manage Shared Account) --> (Add User to Shared Account) : <<include>>
+  (Manage Shared Account) --> (Set Spending Limits) : <<include>>
+  (Manage Shared Account) --> (Set Tag Limits) : <<include>>
+
+  (Set Spending Limits) --> (Limit Exceeded Notification) : <<extend>>
+
+  ' --- Analytics ---
+  User --> (View Statistics)
+  (View Statistics) --> (Filter by User) : <<include>>
+  (View Statistics) --> (Filter by Date) : <<include>>
+  (View Statistics) --> (Filter by Tag) : <<include>>
+  (View Statistics) --> (Filter by Account) : <<include>>
+
+  User --> (Set Hourly Rate)
+
+  ' --- Automation ---
+  User --> (Enable Notification Access)
+  Bank --> (Send Push Notification)
+  (Send Push Notification) --> (Auto Create Transaction) : <<include>>
+
+}
+
+@enduml
