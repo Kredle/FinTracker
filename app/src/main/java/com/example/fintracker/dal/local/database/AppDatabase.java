@@ -10,6 +10,7 @@ import androidx.room.RoomDatabase;
 import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
+import com.example.fintracker.dal.local.dao.UserDao;
 import com.example.fintracker.dal.local.entities.AccountEntity;
 import com.example.fintracker.dal.local.entities.LimitEntity;
 import com.example.fintracker.dal.local.entities.SharedAccountMemberEntity;
@@ -225,8 +226,13 @@ public abstract class AppDatabase extends RoomDatabase {
     }
 
     // DAO abstract methods - Add these as you create your DAOs
+    /**
+     * Provides access to UserDao for user-related database operations.
+     * @return UserDao instance
+     */
+    public abstract UserDao userDao();
+
     // Example:
-    // public abstract UserDao userDao();
     // public abstract AccountDao accountDao();
     // public abstract SharedAccountMemberDao sharedAccountMemberDao();
     // public abstract TagDao tagDao();
