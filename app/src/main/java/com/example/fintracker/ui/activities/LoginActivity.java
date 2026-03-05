@@ -11,85 +11,117 @@ import com.example.fintracker.dal.local.database.AppDatabase;
 import com.example.fintracker.dal.local.entities.UserEntity;
 
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
  * LoginActivity
  *
- * This activity demonstrates the full authentication flow:
- * 1. User registration with validation
- * 2. Duplicate user prevention
- * 3. User login with email or username
+ * Main login screen for the application.
  *
- * The test script runs on a background thread to avoid blocking the main thread
+ * Debug builds: Runs an automated authentication test script to verify core functionality.
+ * Release builds: Shows normal login UI without test execution.
+ *
+ * The test script (if enabled) runs on a background thread to avoid blocking the main thread
  * with database operations (Room requires this best practice).
  */
 public class LoginActivity extends AppCompatActivity {
 
     private static final String TAG = "AUTH_TEST";
 
+    // Executor service for managing background database operations
+    private ExecutorService executorService;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // setContentView(R.layout.activity_login); // Uncomment when you create the layout
 
-        // Run authentication test script on background thread
-        runAuthenticationTestScript();
+        // TODO: Uncomment and set actual layout when created
+        // setContentView(R.layout.activity_login);
+
+        // Initialize executor service for database operations
+        executorService = Executors.newSingleThreadExecutor();
+
+        // Run test script only in debug builds
+        if (isDebugBuild()) {
+            runAuthenticationTestScript();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Properly shut down the executor to prevent resource leaks
+        if (executorService != null && !executorService.isShutdown()) {
+            executorService.shutdownNow();
+        }
     }
 
     /**
-     * Runs a comprehensive authentication test script.
-     * Demonstrates: validation failure, successful registration, and successful login.
-     * All operations run on a background thread to follow Room Database best practices.
+     * Checks if the application is running in debug mode.
+     * Uses ApplicationInfo flags to determine debuggability without requiring BuildConfig.
+     *
+     * @return true if app is debuggable, false otherwise
+     */
+    private boolean isDebugBuild() {
+        return (getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+    }
+
+    /**
+     * Runs a comprehensive authentication test script (DEBUG builds only).
+     *
+     * Tests:
+     * 1. Email validation - rejects invalid email format
+     * 2. User registration - creates user with duplicate prevention
+     * 3. Login with email - flexible login using email
+     * 4. Login with username - flexible login using username
+     *
+     * This method executes on a background thread to follow Room Database best practices
+     * and avoid ANR (Application Not Responding) errors.
+     *
+     * NOTE: This code only runs in debug builds (BuildConfig.DEBUG).
+     * In production/release builds, this is never executed.
      */
     private void runAuthenticationTestScript() {
-        Executors.newSingleThreadExecutor().execute(() -> {
+        executorService.execute(() -> {
             AppDatabase db = AppDatabase.getInstance(LoginActivity.this);
             UserDao userDao = db.userDao();
 
             Log.d(TAG, "=== STARTING AUTHENTICATION TEST SCRIPT ===");
 
-            // ====== STEP 1: FAILING VALIDATION TEST ======
+            // ====== TEST 1: EMAIL VALIDATION ======
             Log.d(TAG, "\n[TEST 1] Attempting registration with INVALID EMAIL...");
             try {
-                String invalidEmail = "bad-email";
-                String username = "testuser123";
-                String password = "password123";
-
                 // Attempt to validate invalid email
-                UserValidator.isValidEmail(invalidEmail);
+                UserValidator.isValidEmail("bad-email");
 
                 // Should not reach here
                 Log.d(TAG, "FAILED: Invalid email was accepted (validation didn't throw exception)");
             } catch (IllegalArgumentException e) {
                 Log.d(TAG, "PASSED: Validation correctly rejected invalid email");
-                Log.d(TAG, "Error Message: " + e.getMessage());
+                Log.d(TAG, "   Error: " + e.getMessage());
             }
 
-            // ====== STEP 2: SUCCESSFUL REGISTRATION ======
+            // ====== TEST 2: USER REGISTRATION ======
             Log.d(TAG, "\n[TEST 2] Attempting registration with VALID data...");
             try {
-                String email = "john.doe@example.com";
-                String username = "johndoe";
-                String password = "password123";
-
-                // Validate all fields
-                UserValidator.validateRegistration(email, username, password);
-                Log.d(TAG, "Validation PASSED: All fields are valid");
+                // Validate all fields (no PII in logs)
+                UserValidator.validateRegistration("john.doe@example.com", "johndoe", "password123");
+                Log.d(TAG, "   Validation PASSED: All fields are valid");
 
                 // Check if user already exists
-                boolean userExists = userDao.checkIfUserExists(email, username);
+                boolean userExists = userDao.checkIfUserExists("john.doe@example.com", "johndoe");
                 if (userExists) {
-                    Log.d(TAG, "User already exists in database, skipping insertion");
+                    Log.d(TAG, "   User already exists in database, skipping insertion");
                 } else {
-                    Log.d(TAG, "User doesn't exist yet, proceeding with registration");
+                    Log.d(TAG, "   User doesn't exist yet, proceeding with registration");
 
                     // Create new user entity
                     UserEntity newUser = new UserEntity();
                     newUser.id = UUID.randomUUID().toString();
-                    newUser.email = email;
-                    newUser.name = username;
-                    newUser.password = password;
+                    newUser.email = "john.doe@example.com";
+                    newUser.name = "johndoe";
+                    newUser.password = "password123";
                     newUser.hourlyRate = 50.0;
                     newUser.isBankSyncEnabled = true;
                     newUser.isSynced = false;
@@ -98,10 +130,10 @@ public class LoginActivity extends AppCompatActivity {
 
                     // Insert user into database
                     userDao.insertUser(newUser);
+
+                    // Log success without PII details
                     Log.d(TAG, "   PASSED: User successfully registered!");
                     Log.d(TAG, "   User ID: " + newUser.id);
-                    Log.d(TAG, "   Email: " + newUser.email);
-                    Log.d(TAG, "   Username: " + newUser.name);
                 }
 
             } catch (IllegalArgumentException e) {
@@ -112,22 +144,17 @@ public class LoginActivity extends AppCompatActivity {
                 Log.d(TAG, "   Error: " + e.getMessage());
             }
 
-            // ====== STEP 3: SUCCESSFUL LOGIN WITH EMAIL ======
+            // ====== TEST 3: LOGIN WITH EMAIL ======
             Log.d(TAG, "\n[TEST 3] Attempting LOGIN using EMAIL and password...");
             try {
-                String email = "john.doe@example.com";
-                String password = "password123";
-
-                UserEntity loginUser = userDao.getUserByEmailOrName(email, password);
+                UserEntity loginUser = userDao.getUserByEmailOrName("john.doe@example.com", "password123");
 
                 if (loginUser != null) {
-                    Log.d(TAG, "   PASSED: Login successful with EMAIL!");
+                    // Log success without logging actual email/password
+                    Log.d(TAG, "   PASSED: Login successful with email!");
                     Log.d(TAG, "   User ID: " + loginUser.id);
-                    Log.d(TAG, "   Email: " + loginUser.email);
-                    Log.d(TAG, "   Username: " + loginUser.name);
-                    Log.d(TAG, "   Hourly Rate: $" + loginUser.hourlyRate);
                 } else {
-                    Log.d(TAG, "   FAILED: Login unsuccessful - user not found with email/password");
+                    Log.d(TAG, "   FAILED: Login unsuccessful - user not found");
                 }
 
             } catch (Exception e) {
@@ -135,22 +162,17 @@ public class LoginActivity extends AppCompatActivity {
                 Log.d(TAG, "   Error: " + e.getMessage());
             }
 
-            // ====== STEP 4: SUCCESSFUL LOGIN WITH USERNAME ======
+            // ====== TEST 4: LOGIN WITH USERNAME ======
             Log.d(TAG, "\n[TEST 4] Attempting LOGIN using USERNAME and password...");
             try {
-                String username = "johndoe";
-                String password = "password123";
-
-                UserEntity loginUser = userDao.getUserByEmailOrName(username, password);
+                UserEntity loginUser = userDao.getUserByEmailOrName("johndoe", "password123");
 
                 if (loginUser != null) {
-                    Log.d(TAG, "   PASSED: Login successful with USERNAME!");
+                    // Log success without logging actual username/password
+                    Log.d(TAG, "   PASSED: Login successful with username!");
                     Log.d(TAG, "   User ID: " + loginUser.id);
-                    Log.d(TAG, "   Email: " + loginUser.email);
-                    Log.d(TAG, "   Username: " + loginUser.name);
-                    Log.d(TAG, "   Hourly Rate: $" + loginUser.hourlyRate);
                 } else {
-                    Log.d(TAG, "   FAILED: Login unsuccessful - user not found with username/password");
+                    Log.d(TAG, "   FAILED: Login unsuccessful - user not found");
                 }
 
             } catch (Exception e) {

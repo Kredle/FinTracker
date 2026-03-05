@@ -28,19 +28,28 @@ public class UserValidator {
 
     /**
      * Validates username format.
-     * Requirements: not empty, not null, min 3 characters, max 25 characters.
+     * Requirements: not empty, not null, min 3 characters, max 25 characters (measured on trimmed value).
+     * Leading/trailing whitespace is not allowed.
      *
      * @param username Username to validate
-     * @return true if username is valid, false otherwise
+     * @return true if username is valid
      * @throws IllegalArgumentException if username is null or violates constraints
      */
     public static boolean isValidUsername(String username) {
         if (username == null) {
             throw new IllegalArgumentException("Username cannot be null");
         }
-        if (username.trim().isEmpty()) {
+
+        // Reject usernames with leading/trailing whitespace
+        if (!username.equals(username.trim())) {
+            throw new IllegalArgumentException("Username cannot have leading or trailing whitespace");
+        }
+
+        if (username.isEmpty()) {
             throw new IllegalArgumentException("Username cannot be empty");
         }
+
+        // Check length constraints on the (already-trimmed) username
         if (username.length() < 3) {
             throw new IllegalArgumentException("Username must be at least 3 characters");
         }
