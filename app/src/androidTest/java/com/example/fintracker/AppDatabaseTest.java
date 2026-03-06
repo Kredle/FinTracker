@@ -7,14 +7,20 @@ import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import com.example.fintracker.bll.validators.AccountValidator;
+import com.example.fintracker.bll.validators.LimitValidator;
 import com.example.fintracker.bll.validators.TagValidator;
+import com.example.fintracker.bll.validators.TransactionValidator;
 import com.example.fintracker.bll.validators.UserValidator;
 import com.example.fintracker.dal.local.dao.AccountDao;
+import com.example.fintracker.dal.local.dao.LimitDao;
 import com.example.fintracker.dal.local.dao.TagDao;
+import com.example.fintracker.dal.local.dao.TransactionDao;
 import com.example.fintracker.dal.local.dao.UserDao;
 import com.example.fintracker.dal.local.database.AppDatabase;
 import com.example.fintracker.dal.local.entities.AccountEntity;
+import com.example.fintracker.dal.local.entities.LimitEntity;
 import com.example.fintracker.dal.local.entities.TagEntity;
+import com.example.fintracker.dal.local.entities.TransactionEntity;
 import com.example.fintracker.dal.local.entities.UserEntity;
 
 import org.junit.After;
@@ -42,6 +48,8 @@ public class AppDatabaseTest {
     private UserDao userDao;
     private AccountDao accountDao;
     private TagDao tagDao;
+    private TransactionDao transactionDao;
+    private LimitDao limitDao;
 
     @Before
     public void setUp() {
@@ -54,6 +62,8 @@ public class AppDatabaseTest {
         userDao = database.userDao();
         accountDao = database.accountDao();
         tagDao = database.tagDao();
+        transactionDao = database.transactionDao();
+        limitDao = database.limitDao();
     }
 
     @After
@@ -388,6 +398,80 @@ public class AppDatabaseTest {
         assertTrue(defaultTags.stream().anyMatch(t -> "Food".equals(t.name)));
     }
 
+    // ========== TRANSACTION VALIDATION AND MANAGEMENT TESTS ==========
+
+    @Test
+    public void testTransactionNegativeAmountValidation() {
+        try {
+            TransactionValidator.isValidAmount(-25.0);
+            fail("Expected IllegalArgumentException for negative transaction amount");
+        } catch (IllegalArgumentException e) {
+            assertNotNull(e.getMessage());
+            assertTrue(e.getMessage().contains("greater than 0"));
+        }
+    }
+
+    @Test
+    public void testInsertTransactionAndSearchByDescription() {
+        String userId = createTestUser("trx.test@example.com", "trxtester");
+        String accountId = createTestAccount(userId, "Cash", 1000.0);
+
+        TransactionValidator.validateTransaction(120.5, "Lunch Payment");
+
+        TransactionEntity transaction = new TransactionEntity();
+        transaction.id = UUID.randomUUID().toString();
+        transaction.accountId = accountId;
+        transaction.userId = userId;
+        transaction.tagId = null;
+        transaction.amount = 120.5;
+        transaction.type = "EXPENSE";
+        transaction.title = "Lunch Payment";
+        transaction.description = "Team lunch with coworkers";
+        transaction.timestamp = getCurrentTimestamp();
+        transaction.bankMessageHash = null;
+        transaction.isSynced = false;
+        transaction.isDeleted = false;
+        transaction.updatedAt = getCurrentTimestamp();
+
+        transactionDao.insertTransaction(transaction);
+
+        List<TransactionEntity> found = transactionDao.searchTransactions(accountId, "coworkers");
+        assertEquals(1, found.size());
+        assertEquals(transaction.id, found.get(0).id);
+        assertTrue(found.get(0).description.contains("coworkers"));
+    }
+
+    @Test
+    public void testInsertLimitAndRetrieveByAccountAndTag() {
+        String userId = createTestUser("limit.test@example.com", "limittester");
+        String accountId = createTestAccount(userId, "Card", 3000.0);
+        String tagId = createTestTag(userId, "Groceries", "ic_groceries");
+
+        LimitValidator.validateLimit(500.0, "MONTH");
+
+        LimitEntity limit = new LimitEntity();
+        limit.id = UUID.randomUUID().toString();
+        limit.accountId = accountId;
+        limit.userId = userId;
+        limit.tagId = tagId;
+        limit.amountLimit = 500.0;
+        limit.period = "MONTH";
+        limit.isSynced = false;
+        limit.isDeleted = false;
+        limit.updatedAt = getCurrentTimestamp();
+
+        limitDao.insertLimit(limit);
+
+        List<LimitEntity> limitsForAccount = limitDao.getLimitsByAccountId(accountId);
+        assertEquals(1, limitsForAccount.size());
+
+        LimitEntity loaded = limitDao.getLimitByAccountAndTag(accountId, tagId);
+        assertNotNull(loaded);
+        assertEquals(limit.id, loaded.id);
+        assertEquals(500.0, loaded.amountLimit, 0.01);
+        assertEquals("MONTH", loaded.period);
+    }
+
     // ========== HELPER METHODS ==========
 
     /**
@@ -440,6 +524,23 @@ public class AppDatabaseTest {
     }
 
     /**
+     * Helper method to create a test tag and return the tag ID.
+     */
+    private String createTestTag(String userId, String tagName, String iconName) {
+        TagEntity tag = new TagEntity();
+        tag.id = UUID.randomUUID().toString();
+        tag.name = tagName;
+        tag.iconName = iconName;
+        tag.ownerId = userId;
+        tag.isSynced = false;
+        tag.isDeleted = false;
+        tag.updatedAt = getCurrentTimestamp();
+
+        tagDao.insertTag(tag);
+        return tag.id;
+    }
+
+    /**
      * Helper method for idempotent tag creation.
      * Returns existing tag ID if tag already exists, otherwise creates new tag.
      */
@@ -462,11 +563,3 @@ public class AppDatabaseTest {
         return tag.id;
     }
 }
-
-
-
-
-
-
-
-
