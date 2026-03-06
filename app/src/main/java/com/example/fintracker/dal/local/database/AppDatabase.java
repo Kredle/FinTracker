@@ -248,12 +248,18 @@ public abstract class AppDatabase extends RoomDatabase {
      */
     public abstract TagDao tagDao();
 
+    /**
+     * Provides access to TransactionDao for transaction-related database operations.
+     * @return TransactionDao instance
+     */
     public abstract TransactionDao transactionDao();
 
+    /**
+     * Provides access to LimitDao for spending limit-related database operations.
+     * @return LimitDao instance
+     */
     public abstract LimitDao limitDao();
 
     // Example for future DAOs:
     // public abstract SharedAccountMemberDao sharedAccountMemberDao();
-    // public abstract LimitDao limitDao();
-    // public abstract TransactionDao transactionDao();
 }

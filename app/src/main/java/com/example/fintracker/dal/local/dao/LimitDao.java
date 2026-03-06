@@ -41,12 +41,25 @@ public interface LimitDao {
     List<LimitEntity> getLimitsByAccountId(@NonNull String accountId);
 
     /**
-     * Retrieves a specific limit by account and tag.
+     * Retrieves the account-wide limit for a specific account (where tagId is NULL).
+     * If multiple non-deleted account-wide limits exist, returns the most recently updated one.
+     * This deterministic ordering ensures consistent results.
+     *
+     * @param accountId The account's unique identifier (UUID)
+     * @return LimitEntity if an account-wide limit exists, null otherwise
+     */
+    @Query("SELECT * FROM limits WHERE accountId = :accountId AND tagId IS NULL AND isDeleted = 0 ORDER BY updatedAt DESC LIMIT 1")
+    @Nullable
+    LimitEntity getAccountWideLimitByAccountId(@NonNull String accountId);
+
+    /**
+     * Retrieves a specific tag-specific limit by account and tag.
+     * This query only returns limits where tagId is NOT NULL (i.e., tag-specific limits).
      * If multiple non-deleted limits exist for the same (accountId, tagId), returns the most recently updated one.
      * This deterministic ordering ensures consistent results.
      *
      * @param accountId The account's unique identifier (UUID)
-     * @param tagId The tag's unique identifier (UUID)
+     * @param tagId The tag's unique identifier (UUID, must not be null)
      * @return LimitEntity if found, null otherwise
      */
     @Query("SELECT * FROM limits WHERE accountId = :accountId AND tagId = :tagId AND isDeleted = 0 ORDER BY updatedAt DESC LIMIT 1")

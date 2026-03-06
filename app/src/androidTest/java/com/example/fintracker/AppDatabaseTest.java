@@ -81,6 +81,22 @@ public class AppDatabaseTest {
         return sdf.format(new Date());
     }
 
+    /**
+     * Helper method to repeat a character/string n times.
+     * Compatible with API 24+ (String.repeat is only available in API 33+).
+     *
+     * @param str The string to repeat
+     * @param count Number of times to repeat
+     * @return The repeated string
+     */
+    private String repeatString(String str, int count) {
+        StringBuilder sb = new StringBuilder(str.length() * count);
+        for (int i = 0; i < count; i++) {
+            sb.append(str);
+        }
+        return sb.toString();
+    }
+
     // ========== USER VALIDATION AND AUTHENTICATION TESTS ==========
 
     @Test
@@ -468,7 +484,7 @@ public class AppDatabaseTest {
 
     @Test
     public void testTransactionTitleTooLong() {
-        String tooLongTitle = "a".repeat(51);
+        String tooLongTitle = repeatString("a", 51);
         try {
             TransactionValidator.isValidTitle(tooLongTitle);
             fail("Expected IllegalArgumentException for transaction title exceeding 50 characters");
@@ -480,7 +496,7 @@ public class AppDatabaseTest {
 
     @Test
     public void testTransactionTitleExactly50CharsAccepted() {
-        String exactTitle = "a".repeat(50);
+        String exactTitle = repeatString("a", 50);
         assertTrue(TransactionValidator.isValidTitle(exactTitle));
     }
 
@@ -697,6 +713,83 @@ public class AppDatabaseTest {
         assertNotNull(retrieved);
         assertEquals(limit2.id, retrieved.id);
         assertEquals(400.0, retrieved.amountLimit, 0.01);
+    }
+
+    @Test
+    public void testAccountWideLimitRetrieval() {
+        String userId = createTestUser("limit.accountwide.test@example.com", "limitaccounttester");
+        String accountId = createTestAccount(userId, "Checking", 2000.0);
+
+        // Insert an account-wide limit (tagId = null)
+        LimitEntity accountLimit = new LimitEntity();
+        accountLimit.id = UUID.randomUUID().toString();
+        accountLimit.accountId = accountId;
+        accountLimit.userId = userId;
+        accountLimit.tagId = null; // Account-wide limit
+        accountLimit.amountLimit = 1000.0;
+        accountLimit.period = "MONTH";
+        accountLimit.isSynced = false;
+        accountLimit.isDeleted = false;
+        accountLimit.updatedAt = getCurrentTimestamp();
+
+        limitDao.insertLimit(accountLimit);
+
+        // Retrieve the account-wide limit
+        LimitEntity retrieved = limitDao.getAccountWideLimitByAccountId(accountId);
+        assertNotNull(retrieved);
+        assertEquals(accountLimit.id, retrieved.id);
+        assertEquals(1000.0, retrieved.amountLimit, 0.01);
+        assertNull(retrieved.tagId); // Verify it's an account-wide limit
+    }
+
+    @Test
+    public void testAccountWideLimitAndTagSpecificLimitCoexist() {
+        String userId = createTestUser("limit.mixed.test@example.com", "limitmixedtester");
+        String accountId = createTestAccount(userId, "Credit", 5000.0);
+        String tagId = createTestTag(userId, "Shopping", "ic_shopping");
+
+        // Insert account-wide limit
+        LimitEntity accountLimit = new LimitEntity();
+        accountLimit.id = UUID.randomUUID().toString();
+        accountLimit.accountId = accountId;
+        accountLimit.userId = userId;
+        accountLimit.tagId = null;
+        accountLimit.amountLimit = 2000.0;
+        accountLimit.period = "MONTH";
+        accountLimit.isSynced = false;
+        accountLimit.isDeleted = false;
+        accountLimit.updatedAt = getCurrentTimestamp();
+
+        limitDao.insertLimit(accountLimit);
+
+        // Insert tag-specific limit
+        LimitEntity tagLimit = new LimitEntity();
+        tagLimit.id = UUID.randomUUID().toString();
+        tagLimit.accountId = accountId;
+        tagLimit.userId = userId;
+        tagLimit.tagId = tagId;
+        tagLimit.amountLimit = 500.0;
+        tagLimit.period = "MONTH";
+        tagLimit.isSynced = false;
+        tagLimit.isDeleted = false;
+        tagLimit.updatedAt = getCurrentTimestamp();
+
+        limitDao.insertLimit(tagLimit);
+
+        // Verify both can be retrieved separately
+        LimitEntity retrievedAccountLimit = limitDao.getAccountWideLimitByAccountId(accountId);
+        assertNotNull(retrievedAccountLimit);
+        assertEquals(accountLimit.id, retrievedAccountLimit.id);
+        assertNull(retrievedAccountLimit.tagId);
+
+        LimitEntity retrievedTagLimit = limitDao.getLimitByAccountAndTag(accountId, tagId);
+        assertNotNull(retrievedTagLimit);
+        assertEquals(tagLimit.id, retrievedTagLimit.id);
+        assertEquals(tagId, retrievedTagLimit.tagId);
+
+        // Verify getLimitsByAccountId returns both
+        List<LimitEntity> allLimits = limitDao.getLimitsByAccountId(accountId);
+        assertEquals(2, allLimits.size());
     }
 
     // ========== HELPER METHODS ==========
