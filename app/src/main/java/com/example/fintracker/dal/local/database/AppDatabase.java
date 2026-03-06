@@ -12,6 +12,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import com.example.fintracker.dal.local.dao.AccountDao;
 import com.example.fintracker.dal.local.dao.LimitDao;
+import com.example.fintracker.dal.local.dao.SharedAccountMemberDao;
 import com.example.fintracker.dal.local.dao.TagDao;
 import com.example.fintracker.dal.local.dao.TransactionDao;
 import com.example.fintracker.dal.local.dao.UserDao;
@@ -260,6 +261,12 @@ public abstract class AppDatabase extends RoomDatabase {
      */
     public abstract LimitDao limitDao();
 
+    /**
+     * Provides access to SharedAccountMemberDao for shared account membership operations.
+     * @return SharedAccountMemberDao instance
+     */
+    public abstract SharedAccountMemberDao sharedAccountMemberDao();
+
     // Example for future DAOs:
-    // public abstract SharedAccountMemberDao sharedAccountMemberDao();
+    // (Add new DAOs here as needed)
 }

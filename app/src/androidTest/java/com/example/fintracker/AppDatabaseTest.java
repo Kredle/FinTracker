@@ -8,17 +8,20 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import com.example.fintracker.bll.validators.AccountValidator;
 import com.example.fintracker.bll.validators.LimitValidator;
+import com.example.fintracker.bll.validators.SharedAccountMemberValidator;
 import com.example.fintracker.bll.validators.TagValidator;
 import com.example.fintracker.bll.validators.TransactionValidator;
 import com.example.fintracker.bll.validators.UserValidator;
 import com.example.fintracker.dal.local.dao.AccountDao;
 import com.example.fintracker.dal.local.dao.LimitDao;
+import com.example.fintracker.dal.local.dao.SharedAccountMemberDao;
 import com.example.fintracker.dal.local.dao.TagDao;
 import com.example.fintracker.dal.local.dao.TransactionDao;
 import com.example.fintracker.dal.local.dao.UserDao;
 import com.example.fintracker.dal.local.database.AppDatabase;
 import com.example.fintracker.dal.local.entities.AccountEntity;
 import com.example.fintracker.dal.local.entities.LimitEntity;
+import com.example.fintracker.dal.local.entities.SharedAccountMemberEntity;
 import com.example.fintracker.dal.local.entities.TagEntity;
 import com.example.fintracker.dal.local.entities.TransactionEntity;
 import com.example.fintracker.dal.local.entities.UserEntity;
@@ -50,6 +53,7 @@ public class AppDatabaseTest {
     private TagDao tagDao;
     private TransactionDao transactionDao;
     private LimitDao limitDao;
+    private SharedAccountMemberDao sharedAccountMemberDao;
 
     @Before
     public void setUp() {
@@ -64,6 +68,7 @@ public class AppDatabaseTest {
         tagDao = database.tagDao();
         transactionDao = database.transactionDao();
         limitDao = database.limitDao();
+        sharedAccountMemberDao = database.sharedAccountMemberDao();
     }
 
     @After
@@ -881,5 +886,224 @@ public class AppDatabaseTest {
 
         tagDao.insertTag(tag);
         return tag.id;
+    }
+
+    // ========== SHARED ACCOUNT MEMBER VALIDATION AND MANAGEMENT TESTS ==========
+
+    @Test
+    public void testSharedAccountMemberInvalidRoleRejection() {
+        try {
+            SharedAccountMemberValidator.isValidRole("GUEST");
+            fail("Expected IllegalArgumentException for invalid role 'GUEST'");
+        } catch (IllegalArgumentException e) {
+            assertNotNull(e.getMessage());
+            assertTrue(e.getMessage().contains("must be exactly ADMIN or USER"));
+        }
+    }
+
+    @Test
+    public void testSharedAccountMemberRoleWithWhitespaceRejection() {
+        try {
+            SharedAccountMemberValidator.isValidRole(" ADMIN ");
+            fail("Expected IllegalArgumentException for role with leading/trailing whitespace");
+        } catch (IllegalArgumentException e) {
+            assertNotNull(e.getMessage());
+            assertTrue(e.getMessage().contains("cannot have leading or trailing whitespace"));
+        }
+    }
+
+    @Test
+    public void testSharedAccountMemberRoleLowercaseRejection() {
+        try {
+            SharedAccountMemberValidator.isValidRole("admin");
+            fail("Expected IllegalArgumentException for lowercase role (case-sensitive validation)");
+        } catch (IllegalArgumentException e) {
+            assertNotNull(e.getMessage());
+            assertTrue(e.getMessage().contains("must be exactly ADMIN or USER"));
+        }
+    }
+
+    @Test
+    public void testSharedAccountMemberValidRolesAccepted() {
+        assertTrue(SharedAccountMemberValidator.isValidRole("ADMIN"));
+        assertTrue(SharedAccountMemberValidator.isValidRole("USER"));
+    }
+
+    @Test
+    public void testAddSharedAccountMemberAndRetrieve() {
+        // Create test user and account
+        String userId1 = createTestUser("sharedmember.test@example.com", "sharedmembertester");
+        String userId2 = createTestUser("member2.test@example.com", "member2tester");
+        String accountId = createTestAccount(userId1, "Shared Checking", 5000.0);
+
+        // Validate role
+        SharedAccountMemberValidator.validateMemberCreation("ADMIN");
+
+        // Add member with ADMIN role
+        SharedAccountMemberEntity member = new SharedAccountMemberEntity();
+        member.id = UUID.randomUUID().toString();
+        member.accountId = accountId;
+        member.userId = userId2;
+        member.role = "ADMIN";
+        member.isSynced = false;
+        member.isDeleted = false;
+        member.updatedAt = getCurrentTimestamp();
+
+        sharedAccountMemberDao.addMember(member);
+
+        // Retrieve the member to verify
+        SharedAccountMemberEntity retrieved = sharedAccountMemberDao.getMemberRole(accountId, userId2);
+        assertNotNull(retrieved);
+        assertEquals(member.id, retrieved.id);
+        assertEquals("ADMIN", retrieved.role);
+        assertEquals(accountId, retrieved.accountId);
+        assertEquals(userId2, retrieved.userId);
+    }
+
+    @Test
+    public void testGetAllMembersForSharedAccount() {
+        // Create test users and account
+        String ownerId = createTestUser("owner.test@example.com", "ownertester");
+        String user1Id = createTestUser("user1.test@example.com", "user1tester");
+        String user2Id = createTestUser("user2.test@example.com", "user2tester");
+        String accountId = createTestAccount(ownerId, "Family Account", 10000.0);
+
+        // Add multiple members
+        SharedAccountMemberEntity member1 = new SharedAccountMemberEntity();
+        member1.id = UUID.randomUUID().toString();
+        member1.accountId = accountId;
+        member1.userId = user1Id;
+        member1.role = "ADMIN";
+        member1.isSynced = false;
+        member1.isDeleted = false;
+        member1.updatedAt = getCurrentTimestamp();
+
+        SharedAccountMemberEntity member2 = new SharedAccountMemberEntity();
+        member2.id = UUID.randomUUID().toString();
+        member2.accountId = accountId;
+        member2.userId = user2Id;
+        member2.role = "USER";
+        member2.isSynced = false;
+        member2.isDeleted = false;
+        member2.updatedAt = getCurrentTimestamp();
+
+        sharedAccountMemberDao.addMember(member1);
+        sharedAccountMemberDao.addMember(member2);
+
+        // Retrieve all members for account
+        List<SharedAccountMemberEntity> members = sharedAccountMemberDao.getMembersForAccount(accountId);
+        assertEquals(2, members.size());
+
+        // Verify roles
+        boolean hasAdmin = false;
+        boolean hasUser = false;
+        for (SharedAccountMemberEntity m : members) {
+            if ("ADMIN".equals(m.role)) hasAdmin = true;
+            if ("USER".equals(m.role)) hasUser = true;
+        }
+        assertTrue(hasAdmin);
+        assertTrue(hasUser);
+    }
+
+    @Test
+    public void testUpdateMemberRole() {
+        // Create test users and account
+        String ownerId = createTestUser("roleupdate.test@example.com", "roleupdatetester");
+        String memberId = createTestUser("memberrole.test@example.com", "memberroletester");
+        String accountId = createTestAccount(ownerId, "Business Account", 20000.0);
+
+        // Add member with USER role
+        SharedAccountMemberEntity member = new SharedAccountMemberEntity();
+        member.id = UUID.randomUUID().toString();
+        member.accountId = accountId;
+        member.userId = memberId;
+        member.role = "USER";
+        member.isSynced = false;
+        member.isDeleted = false;
+        member.updatedAt = getCurrentTimestamp();
+
+        sharedAccountMemberDao.addMember(member);
+
+        // Verify initial role
+        SharedAccountMemberEntity initialMember = sharedAccountMemberDao.getMemberRole(accountId, memberId);
+        assertNotNull(initialMember);
+        assertEquals("USER", initialMember.role);
+
+        // Validate new role before update
+        SharedAccountMemberValidator.validateMemberCreation("ADMIN");
+
+        // Update role to ADMIN
+        int rowsAffected = sharedAccountMemberDao.updateMemberRole(accountId, memberId, "ADMIN");
+        assertEquals(1, rowsAffected);
+
+        // Verify update
+        SharedAccountMemberEntity updatedMember = sharedAccountMemberDao.getMemberRole(accountId, memberId);
+        assertNotNull(updatedMember);
+        assertEquals("ADMIN", updatedMember.role);
+    }
+
+    @Test
+    public void testRemoveMemberFromSharedAccount() {
+        // Create test users and account
+        String ownerId = createTestUser("removetest.test@example.com", "removetesttester");
+        String memberId = createTestUser("toremove.test@example.com", "toremovetester");
+        String accountId = createTestAccount(ownerId, "Temp Account", 1000.0);
+
+        // Add member
+        SharedAccountMemberEntity member = new SharedAccountMemberEntity();
+        member.id = UUID.randomUUID().toString();
+        member.accountId = accountId;
+        member.userId = memberId;
+        member.role = "USER";
+        member.isSynced = false;
+        member.isDeleted = false;
+        member.updatedAt = getCurrentTimestamp();
+
+        sharedAccountMemberDao.addMember(member);
+
+        // Verify member exists
+        SharedAccountMemberEntity existingMember = sharedAccountMemberDao.getMemberRole(accountId, memberId);
+        assertNotNull(existingMember);
+
+        // Remove member (soft delete)
+        int rowsAffected = sharedAccountMemberDao.removeMember(accountId, memberId);
+        assertEquals(1, rowsAffected);
+
+        // Verify member is no longer accessible via getMemberRole (filters isDeleted = 0)
+        SharedAccountMemberEntity removedMember = sharedAccountMemberDao.getMemberRole(accountId, memberId);
+        assertNull(removedMember);
+
+        // Verify member is not in the members list
+        List<SharedAccountMemberEntity> members = sharedAccountMemberDao.getMembersForAccount(accountId);
+        assertEquals(0, members.size());
+    }
+
+    @Test
+    public void testCannotUpdateRoleOfDeletedMember() {
+        // Create test users and account
+        String ownerId = createTestUser("deletedupdate.test@example.com", "deletedupdatetester");
+        String memberId = createTestUser("deletedmember.test@example.com", "deletedmembertester");
+        String accountId = createTestAccount(ownerId, "Test Account", 2000.0);
+
+        // Add and then remove member
+        SharedAccountMemberEntity member = new SharedAccountMemberEntity();
+        member.id = UUID.randomUUID().toString();
+        member.accountId = accountId;
+        member.userId = memberId;
+        member.role = "USER";
+        member.isSynced = false;
+        member.isDeleted = false;
+        member.updatedAt = getCurrentTimestamp();
+
+        sharedAccountMemberDao.addMember(member);
+        sharedAccountMemberDao.removeMember(accountId, memberId);
+
+        // Attempt to update role of deleted member
+        int rowsAffected = sharedAccountMemberDao.updateMemberRole(accountId, memberId, "ADMIN");
+        assertEquals(0, rowsAffected); // Should not update deleted member
+
+        // Verify member is still deleted (not accessible)
+        SharedAccountMemberEntity deletedMember = sharedAccountMemberDao.getMemberRole(accountId, memberId);
+        assertNull(deletedMember);
     }
 }
