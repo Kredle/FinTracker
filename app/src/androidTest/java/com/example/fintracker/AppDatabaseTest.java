@@ -412,6 +412,79 @@ public class AppDatabaseTest {
     }
 
     @Test
+    public void testTransactionNaNAmountRejection() {
+        try {
+            TransactionValidator.isValidAmount(Double.NaN);
+            fail("Expected IllegalArgumentException for NaN transaction amount");
+        } catch (IllegalArgumentException e) {
+            assertNotNull(e.getMessage());
+            assertTrue(e.getMessage().contains("NaN"));
+        }
+    }
+
+    @Test
+    public void testTransactionInfiniteAmountRejection() {
+        try {
+            TransactionValidator.isValidAmount(Double.POSITIVE_INFINITY);
+            fail("Expected IllegalArgumentException for infinite transaction amount");
+        } catch (IllegalArgumentException e) {
+            assertNotNull(e.getMessage());
+            assertTrue(e.getMessage().contains("infinite"));
+        }
+    }
+
+    @Test
+    public void testTransactionZeroAmountRejection() {
+        try {
+            TransactionValidator.isValidAmount(0.0);
+            fail("Expected IllegalArgumentException for zero transaction amount");
+        } catch (IllegalArgumentException e) {
+            assertNotNull(e.getMessage());
+            assertTrue(e.getMessage().contains("greater than 0"));
+        }
+    }
+
+    @Test
+    public void testTransactionEmptyTitleRejection() {
+        try {
+            TransactionValidator.isValidTitle("");
+            fail("Expected IllegalArgumentException for empty transaction title");
+        } catch (IllegalArgumentException e) {
+            assertNotNull(e.getMessage());
+            assertTrue(e.getMessage().contains("cannot be empty"));
+        }
+    }
+
+    @Test
+    public void testTransactionTitleWithWhitespace() {
+        try {
+            TransactionValidator.isValidTitle("  Lunch  ");
+            fail("Expected IllegalArgumentException for transaction title with leading/trailing whitespace");
+        } catch (IllegalArgumentException e) {
+            assertNotNull(e.getMessage());
+            assertTrue(e.getMessage().contains("cannot have leading or trailing whitespace"));
+        }
+    }
+
+    @Test
+    public void testTransactionTitleTooLong() {
+        String tooLongTitle = "a".repeat(51);
+        try {
+            TransactionValidator.isValidTitle(tooLongTitle);
+            fail("Expected IllegalArgumentException for transaction title exceeding 50 characters");
+        } catch (IllegalArgumentException e) {
+            assertNotNull(e.getMessage());
+            assertTrue(e.getMessage().contains("must not exceed 50 characters"));
+        }
+    }
+
+    @Test
+    public void testTransactionTitleExactly50CharsAccepted() {
+        String exactTitle = "a".repeat(50);
+        assertTrue(TransactionValidator.isValidTitle(exactTitle));
+    }
+
+    @Test
     public void testInsertTransactionAndSearchByDescription() {
         String userId = createTestUser("trx.test@example.com", "trxtester");
         String accountId = createTestAccount(userId, "Cash", 1000.0);
@@ -439,6 +512,119 @@ public class AppDatabaseTest {
         assertEquals(1, found.size());
         assertEquals(transaction.id, found.get(0).id);
         assertTrue(found.get(0).description.contains("coworkers"));
+    }
+
+    @Test
+    public void testSearchTransactionsByTitle() {
+        String userId = createTestUser("trx.search.test@example.com", "trxsearcher");
+        String accountId = createTestAccount(userId, "Cash", 1000.0);
+
+        TransactionEntity transaction = new TransactionEntity();
+        transaction.id = UUID.randomUUID().toString();
+        transaction.accountId = accountId;
+        transaction.userId = userId;
+        transaction.tagId = null;
+        transaction.amount = 50.0;
+        transaction.type = "EXPENSE";
+        transaction.title = "Coffee Shop Payment";
+        transaction.description = "Morning coffee";
+        transaction.timestamp = getCurrentTimestamp();
+        transaction.bankMessageHash = null;
+        transaction.isSynced = false;
+        transaction.isDeleted = false;
+        transaction.updatedAt = getCurrentTimestamp();
+
+        transactionDao.insertTransaction(transaction);
+
+        List<TransactionEntity> found = transactionDao.searchTransactions(accountId, "Coffee");
+        assertEquals(1, found.size());
+        assertEquals(transaction.id, found.get(0).id);
+    }
+
+    // ========== LIMIT VALIDATION AND MANAGEMENT TESTS ==========
+
+    @Test
+    public void testLimitNegativeAmountRejection() {
+        try {
+            LimitValidator.isValidAmountLimit(-100.0);
+            fail("Expected IllegalArgumentException for negative limit amount");
+        } catch (IllegalArgumentException e) {
+            assertNotNull(e.getMessage());
+            assertTrue(e.getMessage().contains("greater than 0"));
+        }
+    }
+
+    @Test
+    public void testLimitNaNAmountRejection() {
+        try {
+            LimitValidator.isValidAmountLimit(Double.NaN);
+            fail("Expected IllegalArgumentException for NaN limit amount");
+        } catch (IllegalArgumentException e) {
+            assertNotNull(e.getMessage());
+            assertTrue(e.getMessage().contains("NaN"));
+        }
+    }
+
+    @Test
+    public void testLimitInfiniteAmountRejection() {
+        try {
+            LimitValidator.isValidAmountLimit(Double.POSITIVE_INFINITY);
+            fail("Expected IllegalArgumentException for infinite limit amount");
+        } catch (IllegalArgumentException e) {
+            assertNotNull(e.getMessage());
+            assertTrue(e.getMessage().contains("infinite"));
+        }
+    }
+
+    @Test
+    public void testLimitZeroAmountRejection() {
+        try {
+            LimitValidator.isValidAmountLimit(0.0);
+            fail("Expected IllegalArgumentException for zero limit amount");
+        } catch (IllegalArgumentException e) {
+            assertNotNull(e.getMessage());
+            assertTrue(e.getMessage().contains("greater than 0"));
+        }
+    }
+
+    @Test
+    public void testLimitInvalidPeriodRejection() {
+        try {
+            LimitValidator.isValidPeriod("YEAR");
+            fail("Expected IllegalArgumentException for invalid period");
+        } catch (IllegalArgumentException e) {
+            assertNotNull(e.getMessage());
+            assertTrue(e.getMessage().contains("must be exactly DAY, WEEK, or MONTH"));
+        }
+    }
+
+    @Test
+    public void testLimitPeriodWithWhitespaceRejection() {
+        try {
+            LimitValidator.isValidPeriod(" MONTH ");
+            fail("Expected IllegalArgumentException for period with leading/trailing whitespace");
+        } catch (IllegalArgumentException e) {
+            assertNotNull(e.getMessage());
+            assertTrue(e.getMessage().contains("cannot have leading or trailing whitespace"));
+        }
+    }
+
+    @Test
+    public void testLimitPeriodLowercaseRejection() {
+        try {
+            LimitValidator.isValidPeriod("month");
+            fail("Expected IllegalArgumentException for lowercase period (case-sensitive validation)");
+        } catch (IllegalArgumentException e) {
+            assertNotNull(e.getMessage());
+            assertTrue(e.getMessage().contains("must be exactly DAY, WEEK, or MONTH"));
+        }
+    }
+
+    @Test
+    public void testLimitValidPeriodsAccepted() {
+        assertTrue(LimitValidator.isValidPeriod("DAY"));
+        assertTrue(LimitValidator.isValidPeriod("WEEK"));
+        assertTrue(LimitValidator.isValidPeriod("MONTH"));
     }
 
     @Test
@@ -470,6 +656,47 @@ public class AppDatabaseTest {
         assertEquals(limit.id, loaded.id);
         assertEquals(500.0, loaded.amountLimit, 0.01);
         assertEquals("MONTH", loaded.period);
+    }
+
+    @Test
+    public void testGetLimitByAccountAndTagReturnsMostRecent() {
+        String userId = createTestUser("limit.recent.test@example.com", "limitrecenttester");
+        String accountId = createTestAccount(userId, "Card", 3000.0);
+        String tagId = createTestTag(userId, "Entertainment", "ic_entertainment");
+
+        // Insert first limit
+        LimitEntity limit1 = new LimitEntity();
+        limit1.id = UUID.randomUUID().toString();
+        limit1.accountId = accountId;
+        limit1.userId = userId;
+        limit1.tagId = tagId;
+        limit1.amountLimit = 300.0;
+        limit1.period = "MONTH";
+        limit1.isSynced = false;
+        limit1.isDeleted = false;
+        limit1.updatedAt = "2026-03-01 10:00:00";
+
+        limitDao.insertLimit(limit1);
+
+        // Insert second limit with later updatedAt timestamp
+        LimitEntity limit2 = new LimitEntity();
+        limit2.id = UUID.randomUUID().toString();
+        limit2.accountId = accountId;
+        limit2.userId = userId;
+        limit2.tagId = tagId;
+        limit2.amountLimit = 400.0;
+        limit2.period = "MONTH";
+        limit2.isSynced = false;
+        limit2.isDeleted = false;
+        limit2.updatedAt = "2026-03-05 15:00:00";
+
+        limitDao.insertLimit(limit2);
+
+        // Should return the most recently updated limit (limit2)
+        LimitEntity retrieved = limitDao.getLimitByAccountAndTag(accountId, tagId);
+        assertNotNull(retrieved);
+        assertEquals(limit2.id, retrieved.id);
+        assertEquals(400.0, retrieved.amountLimit, 0.01);
     }
 
     // ========== HELPER METHODS ==========
