@@ -41,7 +41,7 @@ public interface TagDao {
 
     /**
      * Retrieves system default tags (tags not owned by any user).
-     * Default tags have ownerId = null and are available to all users.
+     * Default tags have ownerId = null or ownerId = '' (empty string) and are available to all users.
      * Typically includes predefined categories like "Food", "Transport", "Entertainment", etc.
      *
      * @return List of default TagEntity objects
@@ -59,6 +59,18 @@ public interface TagDao {
     @Query("SELECT * FROM tags WHERE id = :tagId AND isDeleted = 0 LIMIT 1")
     @Nullable
     TagEntity getTagById(@NonNull String tagId);
+
+    /**
+     * Retrieves a specific tag by name and owner.
+     * Useful for checking if a tag already exists before insertion (idempotent operations).
+     *
+     * @param name The tag name
+     * @param ownerId The owner's user ID
+     * @return TagEntity if found, null otherwise
+     */
+    @Query("SELECT * FROM tags WHERE name = :name AND ownerId = :ownerId AND isDeleted = 0 LIMIT 1")
+    @Nullable
+    TagEntity getTagByNameAndOwner(@NonNull String name, @NonNull String ownerId);
 
     /**
      * Retrieves both user-created and default tags for display in the UI.

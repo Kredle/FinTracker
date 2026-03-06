@@ -50,14 +50,28 @@ public interface AccountDao {
     AccountEntity getAccountById(@NonNull String accountId);
 
     /**
+     * Retrieves a specific account by name and owner.
+     * Useful for checking if an account already exists before insertion (idempotent operations).
+     *
+     * @param name The account name
+     * @param ownerId The owner's user ID
+     * @return AccountEntity if found, null otherwise
+     */
+    @Query("SELECT * FROM accounts WHERE name = :name AND ownerId = :ownerId AND isDeleted = 0 LIMIT 1")
+    @Nullable
+    AccountEntity getAccountByNameAndOwner(@NonNull String name, @NonNull String ownerId);
+
+    /**
      * Updates the balance of a specific account.
      * Typically called after a transaction is added to an account.
+     * Only updates non-deleted accounts (isDeleted = 0).
      *
      * @param accountId The account's ID
      * @param newBalance The new balance amount
+     * @return The number of rows affected (0 if account doesn't exist or is deleted, 1 if updated)
      */
-    @Query("UPDATE accounts SET balance = :newBalance WHERE id = :accountId")
-    void updateAccountBalance(@NonNull String accountId, double newBalance);
+    @Query("UPDATE accounts SET balance = :newBalance WHERE id = :accountId AND isDeleted = 0")
+    int updateAccountBalance(@NonNull String accountId, double newBalance);
 
     /**
      * Updates an entire account entity.

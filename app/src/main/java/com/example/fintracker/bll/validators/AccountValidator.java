@@ -38,13 +38,19 @@ public class AccountValidator {
 
     /**
      * Validates account balance.
-     * Requirements: cannot be negative, must be a valid double.
+     * Requirements: cannot be negative, must be a valid finite double (not NaN or Infinity).
      *
      * @param balance Account balance to validate
      * @return true if balance is valid
-     * @throws IllegalArgumentException if balance is negative or invalid
+     * @throws IllegalArgumentException if balance is negative, NaN, or infinite
      */
     public static boolean isValidBalance(double balance) {
+        if (Double.isNaN(balance)) {
+            throw new IllegalArgumentException("Account balance cannot be NaN (Not a Number)");
+        }
+        if (Double.isInfinite(balance)) {
+            throw new IllegalArgumentException("Account balance cannot be infinite");
+        }
         if (balance < 0) {
             throw new IllegalArgumentException("Account balance cannot be negative. Provided: " + balance);
         }
