@@ -1,6 +1,7 @@
 package com.example.fintracker.dal.local.dao;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Delete;
@@ -40,6 +41,9 @@ public interface TagDao {
     @Query("SELECT * FROM tags WHERE ownerId = :ownerId AND isDeleted = 0 ORDER BY name ASC")
     LiveData<List<TagEntity>> getTagsByUserId(@NonNull String ownerId);
 
+    @Query("SELECT * FROM tags WHERE ownerId = :ownerId AND isDeleted = 0 ORDER BY name ASC")
+    List<TagEntity> getTagsByUserIdSync(@NonNull String ownerId);
+
     /**
      * Retrieves system default tags (tags not owned by any user).
      * Default tags have ownerId = null or ownerId = '' (empty string) and are available to all users.
@@ -50,6 +54,9 @@ public interface TagDao {
     @Query("SELECT * FROM tags WHERE (ownerId IS NULL OR ownerId = '') AND isDeleted = 0 ORDER BY name ASC")
     LiveData<List<TagEntity>> getDefaultTags();
 
+    @Query("SELECT * FROM tags WHERE (ownerId IS NULL OR ownerId = '') AND isDeleted = 0 ORDER BY name ASC")
+    List<TagEntity> getDefaultTagsSync();
+
     /**
      * Retrieves a specific tag by its ID.
      * Useful for loading tag details or validation.
@@ -59,6 +66,10 @@ public interface TagDao {
      */
     @Query("SELECT * FROM tags WHERE id = :tagId AND isDeleted = 0 LIMIT 1")
     LiveData<TagEntity> getTagById(@NonNull String tagId);
+
+    @Query("SELECT * FROM tags WHERE id = :tagId AND isDeleted = 0 LIMIT 1")
+    @Nullable
+    TagEntity getTagByIdSync(@NonNull String tagId);
 
     /**
      * Retrieves a specific tag by name and owner.
@@ -71,6 +82,10 @@ public interface TagDao {
     @Query("SELECT * FROM tags WHERE name = :name AND ownerId = :ownerId AND isDeleted = 0 LIMIT 1")
     LiveData<TagEntity> getTagByNameAndOwner(@NonNull String name, @NonNull String ownerId);
 
+    @Query("SELECT * FROM tags WHERE name = :name AND ownerId = :ownerId AND isDeleted = 0 LIMIT 1")
+    @Nullable
+    TagEntity getTagByNameAndOwnerSync(@NonNull String name, @NonNull String ownerId);
+
     /**
      * Retrieves both user-created and default tags for display in the UI.
      * Combines tags owned by the user with system default tags.
@@ -80,6 +95,9 @@ public interface TagDao {
      */
     @Query("SELECT * FROM tags WHERE (ownerId = :ownerId OR ownerId IS NULL OR ownerId = '') AND isDeleted = 0 ORDER BY name ASC")
     LiveData<List<TagEntity>> getAllAvailableTags(@NonNull String ownerId);
+
+    @Query("SELECT * FROM tags WHERE (ownerId = :ownerId OR ownerId IS NULL OR ownerId = '') AND isDeleted = 0 ORDER BY name ASC")
+    List<TagEntity> getAllAvailableTagsSync(@NonNull String ownerId);
 
     /**
      * Updates an entire tag entity.

@@ -48,6 +48,9 @@ public interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE accountId = :accountId AND isDeleted = 0 ORDER BY timestamp DESC")
     LiveData<List<TransactionEntity>> getTransactionsByAccountId(@NonNull String accountId);
 
+    @Query("SELECT * FROM transactions WHERE accountId = :accountId AND isDeleted = 0 ORDER BY timestamp DESC")
+    List<TransactionEntity> getTransactionsByAccountIdSync(@NonNull String accountId);
+
     /**
      * Searches for transactions by keyword in title or description.
      * Uses SQL LIKE with wildcards to match partial strings in either field.
@@ -59,6 +62,9 @@ public interface TransactionDao {
      */
     @Query("SELECT * FROM transactions WHERE accountId = :accountId AND isDeleted = 0 AND (title LIKE '%' || :searchQuery || '%' OR description LIKE '%' || :searchQuery || '%') ORDER BY timestamp DESC")
     LiveData<List<TransactionEntity>> searchTransactions(@NonNull String accountId, @NonNull String searchQuery);
+
+    @Query("SELECT * FROM transactions WHERE accountId = :accountId AND isDeleted = 0 AND (title LIKE '%' || :searchQuery || '%' OR description LIKE '%' || :searchQuery || '%') ORDER BY timestamp DESC")
+    List<TransactionEntity> searchTransactionsSync(@NonNull String accountId, @NonNull String searchQuery);
 
     /**
      * Soft-deletes a transaction by setting isDeleted flag to true.

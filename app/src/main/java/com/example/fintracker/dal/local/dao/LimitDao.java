@@ -1,6 +1,7 @@
 package com.example.fintracker.dal.local.dao;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Insert;
@@ -42,6 +43,9 @@ public interface LimitDao {
     @Query("SELECT * FROM limits WHERE accountId = :accountId AND isDeleted = 0")
     LiveData<List<LimitEntity>> getLimitsByAccountId(@NonNull String accountId);
 
+    @Query("SELECT * FROM limits WHERE accountId = :accountId AND isDeleted = 0")
+    List<LimitEntity> getLimitsByAccountIdSync(@NonNull String accountId);
+
     /**
      * Retrieves the account-wide limit for a specific account (where tagId is NULL).
      * If multiple non-deleted account-wide limits exist, returns the most recently updated one.
@@ -52,6 +56,10 @@ public interface LimitDao {
      */
     @Query("SELECT * FROM limits WHERE accountId = :accountId AND tagId IS NULL AND isDeleted = 0 ORDER BY updatedAt DESC LIMIT 1")
     LiveData<LimitEntity> getAccountWideLimitByAccountId(@NonNull String accountId);
+
+    @Query("SELECT * FROM limits WHERE accountId = :accountId AND tagId IS NULL AND isDeleted = 0 ORDER BY updatedAt DESC LIMIT 1")
+    @Nullable
+    LimitEntity getAccountWideLimitByAccountIdSync(@NonNull String accountId);
 
     /**
      * Retrieves a specific tag-specific limit by account and tag.
@@ -65,6 +73,10 @@ public interface LimitDao {
      */
     @Query("SELECT * FROM limits WHERE accountId = :accountId AND tagId = :tagId AND isDeleted = 0 ORDER BY updatedAt DESC LIMIT 1")
     LiveData<LimitEntity> getLimitByAccountAndTag(@NonNull String accountId, @NonNull String tagId);
+
+    @Query("SELECT * FROM limits WHERE accountId = :accountId AND tagId = :tagId AND isDeleted = 0 ORDER BY updatedAt DESC LIMIT 1")
+    @Nullable
+    LimitEntity getLimitByAccountAndTagSync(@NonNull String accountId, @NonNull String tagId);
 
     /**
      * Retrieves all unsynced limits (isSynced = false).

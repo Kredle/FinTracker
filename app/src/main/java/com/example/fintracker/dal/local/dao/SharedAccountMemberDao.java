@@ -1,6 +1,7 @@
 package com.example.fintracker.dal.local.dao;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Insert;
@@ -40,16 +41,23 @@ public interface SharedAccountMemberDao {
     @Query("SELECT * FROM shared_account_members WHERE accountId = :accountId AND isDeleted = 0")
     LiveData<List<SharedAccountMemberEntity>> getMembersForAccount(@NonNull String accountId);
 
+    @Query("SELECT * FROM shared_account_members WHERE accountId = :accountId AND isDeleted = 0")
+    List<SharedAccountMemberEntity> getMembersForAccountSync(@NonNull String accountId);
+
     /**
      * Retrieves a specific active membership by account and user.
      * Used to check whether a user currently has access and what role they hold.
      *
      * @param accountId The account's unique identifier (UUID)
      * @param userId The user's unique identifier (UUID)
-     * @return LiveData containing SharedAccountMemberEntity if found, empty if user is not an active member
+     * @return LiveData that emits the SharedAccountMemberEntity if found, or null if the user is not an active member
      */
     @Query("SELECT * FROM shared_account_members WHERE accountId = :accountId AND userId = :userId AND isDeleted = 0 LIMIT 1")
     LiveData<SharedAccountMemberEntity> getMember(@NonNull String accountId, @NonNull String userId);
+
+    @Query("SELECT * FROM shared_account_members WHERE accountId = :accountId AND userId = :userId AND isDeleted = 0 LIMIT 1")
+    @Nullable
+    SharedAccountMemberEntity getMemberSync(@NonNull String accountId, @NonNull String userId);
 
     /**
      * Updates the role of a specific member in a shared account.

@@ -1,6 +1,7 @@
 package com.example.fintracker.dal.local.dao;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Delete;
@@ -39,6 +40,9 @@ public interface AccountDao {
     @Query("SELECT * FROM accounts WHERE ownerId = :ownerId AND isDeleted = 0 ORDER BY name ASC")
     LiveData<List<AccountEntity>> getAccountsByUserId(@NonNull String ownerId);
 
+    @Query("SELECT * FROM accounts WHERE ownerId = :ownerId AND isDeleted = 0 ORDER BY name ASC")
+    List<AccountEntity> getAccountsByUserIdSync(@NonNull String ownerId);
+
     /**
      * Retrieves a specific account by its ID.
      * Useful for loading account details or updating balance.
@@ -48,6 +52,10 @@ public interface AccountDao {
      */
     @Query("SELECT * FROM accounts WHERE id = :accountId AND isDeleted = 0 LIMIT 1")
     LiveData<AccountEntity> getAccountById(@NonNull String accountId);
+
+    @Query("SELECT * FROM accounts WHERE id = :accountId AND isDeleted = 0 LIMIT 1")
+    @Nullable
+    AccountEntity getAccountByIdSync(@NonNull String accountId);
 
     /**
      * Retrieves a specific account by name and owner.
@@ -59,6 +67,10 @@ public interface AccountDao {
      */
     @Query("SELECT * FROM accounts WHERE name = :name AND ownerId = :ownerId AND isDeleted = 0 LIMIT 1")
     LiveData<AccountEntity> getAccountByNameAndOwner(@NonNull String name, @NonNull String ownerId);
+
+    @Query("SELECT * FROM accounts WHERE name = :name AND ownerId = :ownerId AND isDeleted = 0 LIMIT 1")
+    @Nullable
+    AccountEntity getAccountByNameAndOwnerSync(@NonNull String name, @NonNull String ownerId);
 
     /**
      * Updates the balance of a specific account.

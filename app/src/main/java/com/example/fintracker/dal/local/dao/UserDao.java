@@ -1,6 +1,7 @@
 package com.example.fintracker.dal.local.dao;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Insert;
@@ -37,6 +38,7 @@ public interface UserDao {
      * @return UserEntity if found, null otherwise
      */
     @Query("SELECT * FROM users WHERE (email = :login OR name = :login) AND password = :password LIMIT 1")
+    @Nullable
     UserEntity getUserByEmailOrName(@NonNull String login, @NonNull String password);
 
     /**
