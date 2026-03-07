@@ -53,7 +53,7 @@ public interface SharedAccountMemberDao {
      * @return LiveData that emits the SharedAccountMemberEntity if found, or null if the user is not an active member
      */
     @Query("SELECT * FROM shared_account_members WHERE accountId = :accountId AND userId = :userId AND isDeleted = 0 LIMIT 1")
-    LiveData<@Nullable SharedAccountMemberEntity> getMember(@NonNull String accountId, @NonNull String userId);
+    LiveData<SharedAccountMemberEntity> getMember(@NonNull String accountId, @NonNull String userId);
 
     @Query("SELECT * FROM shared_account_members WHERE accountId = :accountId AND userId = :userId AND isDeleted = 0 LIMIT 1")
     @Nullable

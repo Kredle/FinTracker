@@ -84,11 +84,11 @@ public class TagRepository {
         return tagDao.getDefaultTags();
     }
 
-    public LiveData<@Nullable TagEntity> getTagById(@NonNull String tagId) {
+    public LiveData<TagEntity> getTagById(@NonNull String tagId) {
         return tagDao.getTagById(tagId);
     }
 
-    public LiveData<@Nullable TagEntity> getTagByNameAndOwner(@NonNull String name, @NonNull String ownerId) {
+    public LiveData<TagEntity> getTagByNameAndOwner(@NonNull String name, @NonNull String ownerId) {
         return tagDao.getTagByNameAndOwner(name, ownerId);
     }
 

@@ -60,7 +60,7 @@ public interface UserDao {
      * @return LiveData that emits the UserEntity if found, or null if the user doesn't exist
      */
     @Query("SELECT * FROM users WHERE id = :userId LIMIT 1")
-    LiveData<@Nullable UserEntity> getUserById(@NonNull String userId);
+    LiveData<UserEntity> getUserById(@NonNull String userId);
 
     /**
      * Retrieves a user by their ID (UUID) synchronously.
@@ -81,7 +81,7 @@ public interface UserDao {
      * @return LiveData that emits the UserEntity if found, or null if the user doesn't exist
      */
     @Query("SELECT * FROM users WHERE email = :email LIMIT 1")
-    LiveData<@Nullable UserEntity> getUserByEmail(@NonNull String email);
+    LiveData<UserEntity> getUserByEmail(@NonNull String email);
 
     /**
      * Retrieves a user by email address synchronously.

@@ -105,11 +105,11 @@ public class UserRepository {
         });
     }
 
-    public LiveData<@Nullable UserEntity> getUserById(@NonNull String userId) {
+    public LiveData<UserEntity> getUserById(@NonNull String userId) {
         return userDao.getUserById(userId);
     }
 
-    public LiveData<@Nullable UserEntity> getUserByEmail(@NonNull String email) {
+    public LiveData<UserEntity> getUserByEmail(@NonNull String email) {
         return userDao.getUserByEmail(email);
     }
 
