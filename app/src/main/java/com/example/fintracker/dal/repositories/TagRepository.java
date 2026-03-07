@@ -1,8 +1,6 @@
 package com.example.fintracker.dal.repositories;
 
 import android.app.Application;
-import android.os.Handler;
-import android.os.Looper;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -14,7 +12,6 @@ import com.example.fintracker.dal.local.entities.TagEntity;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * Repository layer for tag-related local database operations.
@@ -25,18 +22,15 @@ public class TagRepository {
     private final TagDao tagDao;
     private final ExecutorService executorService;
     private final Executor callbackExecutor;
+    private final boolean ownsExecutor;
 
     public TagRepository(@NonNull Application application) {
         this(
                 AppDatabase.getInstance(application).tagDao(),
-                Executors.newSingleThreadExecutor(),
-                createMainThreadExecutor()
+                RepositoryExecutors.db(),
+                RepositoryExecutors.mainThread(),
+                false
         );
-    }
-
-    private static Executor createMainThreadExecutor() {
-        final Handler mainHandler = new Handler(Looper.getMainLooper());
-        return mainHandler::post;
     }
 
     public TagRepository(
@@ -44,9 +38,19 @@ public class TagRepository {
             @NonNull ExecutorService executorService,
             @NonNull Executor callbackExecutor
     ) {
+        this(tagDao, executorService, callbackExecutor, true);
+    }
+
+    private TagRepository(
+            @NonNull TagDao tagDao,
+            @NonNull ExecutorService executorService,
+            @NonNull Executor callbackExecutor,
+            boolean ownsExecutor
+    ) {
         this.tagDao = tagDao;
         this.executorService = executorService;
         this.callbackExecutor = callbackExecutor;
+        this.ownsExecutor = ownsExecutor;
     }
 
     public void insertTag(@NonNull final TagEntity tag) {
@@ -184,7 +188,8 @@ public class TagRepository {
     }
 
     public void shutdown() {
-        executorService.shutdown();
+        if (ownsExecutor) {
+            executorService.shutdown();
+        }
     }
 }
-

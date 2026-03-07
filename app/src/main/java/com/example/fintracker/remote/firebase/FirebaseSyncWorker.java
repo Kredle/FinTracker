@@ -26,14 +26,17 @@ public class FirebaseSyncWorker extends Worker {
 
         try {
             FirebaseSyncManager syncManager = new FirebaseSyncManager(getApplicationContext());
-            syncManager.syncUnsyncedDataToCloud();
+            boolean allSynced = syncManager.syncUnsyncedDataToCloud();
+            if (allSynced) {
+                Log.d(TAG, "Sync completed successfully");
+                return Result.success();
+            }
 
-            Log.d(TAG, "Sync initiated successfully");
-            return Result.success();
+            Log.w(TAG, "Sync completed with failures, requesting retry");
+            return Result.retry();
         } catch (Exception e) {
             Log.e(TAG, "Sync failed with exception", e);
             return Result.retry();
         }
     }
 }
-

@@ -1,8 +1,6 @@
 package com.example.fintracker.dal.repositories;
 
 import android.app.Application;
-import android.os.Handler;
-import android.os.Looper;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -14,7 +12,6 @@ import com.example.fintracker.dal.local.entities.SharedAccountMemberEntity;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * Repository layer for shared account member-related local database operations.
@@ -25,18 +22,15 @@ public class SharedAccountMemberRepository {
     private final SharedAccountMemberDao sharedAccountMemberDao;
     private final ExecutorService executorService;
     private final Executor callbackExecutor;
+    private final boolean ownsExecutor;
 
     public SharedAccountMemberRepository(@NonNull Application application) {
         this(
                 AppDatabase.getInstance(application).sharedAccountMemberDao(),
-                Executors.newSingleThreadExecutor(),
-                createMainThreadExecutor()
+                RepositoryExecutors.db(),
+                RepositoryExecutors.mainThread(),
+                false
         );
-    }
-
-    private static Executor createMainThreadExecutor() {
-        final Handler mainHandler = new Handler(Looper.getMainLooper());
-        return mainHandler::post;
     }
 
     public SharedAccountMemberRepository(
@@ -44,9 +38,19 @@ public class SharedAccountMemberRepository {
             @NonNull ExecutorService executorService,
             @NonNull Executor callbackExecutor
     ) {
+        this(sharedAccountMemberDao, executorService, callbackExecutor, true);
+    }
+
+    private SharedAccountMemberRepository(
+            @NonNull SharedAccountMemberDao sharedAccountMemberDao,
+            @NonNull ExecutorService executorService,
+            @NonNull Executor callbackExecutor,
+            boolean ownsExecutor
+    ) {
         this.sharedAccountMemberDao = sharedAccountMemberDao;
         this.executorService = executorService;
         this.callbackExecutor = callbackExecutor;
+        this.ownsExecutor = ownsExecutor;
     }
 
     public void addMember(@NonNull final SharedAccountMemberEntity member) {
@@ -132,7 +136,8 @@ public class SharedAccountMemberRepository {
     }
 
     public void shutdown() {
-        executorService.shutdown();
+        if (ownsExecutor) {
+            executorService.shutdown();
+        }
     }
 }
-

@@ -1,8 +1,6 @@
 package com.example.fintracker.dal.repositories;
 
 import android.app.Application;
-import android.os.Handler;
-import android.os.Looper;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -14,7 +12,6 @@ import com.example.fintracker.dal.local.entities.AccountEntity;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * Repository layer for account-related local database operations.
@@ -25,18 +22,15 @@ public class AccountRepository {
     private final AccountDao accountDao;
     private final ExecutorService executorService;
     private final Executor callbackExecutor;
+    private final boolean ownsExecutor;
 
     public AccountRepository(@NonNull Application application) {
         this(
                 AppDatabase.getInstance(application).accountDao(),
-                Executors.newSingleThreadExecutor(),
-                createMainThreadExecutor()
+                RepositoryExecutors.db(),
+                RepositoryExecutors.mainThread(),
+                false
         );
-    }
-
-    private static Executor createMainThreadExecutor() {
-        final Handler mainHandler = new Handler(Looper.getMainLooper());
-        return mainHandler::post;
     }
 
     public AccountRepository(
@@ -44,9 +38,19 @@ public class AccountRepository {
             @NonNull ExecutorService executorService,
             @NonNull Executor callbackExecutor
     ) {
+        this(accountDao, executorService, callbackExecutor, true);
+    }
+
+    private AccountRepository(
+            @NonNull AccountDao accountDao,
+            @NonNull ExecutorService executorService,
+            @NonNull Executor callbackExecutor,
+            boolean ownsExecutor
+    ) {
         this.accountDao = accountDao;
         this.executorService = executorService;
         this.callbackExecutor = callbackExecutor;
+        this.ownsExecutor = ownsExecutor;
     }
 
     public void insertAccount(@NonNull final AccountEntity account) {
@@ -167,6 +171,8 @@ public class AccountRepository {
     }
 
     public void shutdown() {
-        executorService.shutdown();
+        if (ownsExecutor) {
+            executorService.shutdown();
+        }
     }
 }

@@ -21,8 +21,8 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 /**
- * FirebaseSyncManager handles bidirectional synchronization between local Room database
- * and Cloud Firestore using synchronous operations.
+ * FirebaseSyncManager handles one-way synchronization of unsynced local Room data
+ * to Cloud Firestore using synchronous operations.
  */
 public class FirebaseSyncManager {
 
@@ -42,25 +42,27 @@ public class FirebaseSyncManager {
 
     /**
      * Syncs all unsynced local data to Cloud Firestore synchronously.
-     * This method blocks until all Firebase operations complete.
-     * Must be called from a background thread (e.g., WorkManager).
+     *
+     * @return true when all writes succeed, false if any part of the sync fails
      */
-    public void syncUnsyncedDataToCloud() {
+    public boolean syncUnsyncedDataToCloud() {
         Log.d(TAG, "Starting synchronous sync of unsynced data to cloud...");
 
-        // Sync unsynced accounts
-        syncUnsyncedAccounts();
+        boolean accountsOk = syncUnsyncedAccounts();
+        boolean tagsOk = syncUnsyncedTags();
+        boolean transactionsOk = syncUnsyncedTransactions();
+        boolean allSynced = accountsOk && tagsOk && transactionsOk;
 
-        // Sync unsynced tags
-        syncUnsyncedTags();
-
-        // Sync unsynced transactions
-        syncUnsyncedTransactions();
-
-        Log.d(TAG, "Sync process completed for all entities");
+        if (allSynced) {
+            Log.d(TAG, "Sync process completed for all entities");
+        } else {
+            Log.w(TAG, "Sync completed with failures; unsynced data remains for retry");
+        }
+        return allSynced;
     }
 
-    private void syncUnsyncedAccounts() {
+    private boolean syncUnsyncedAccounts() {
+        boolean allSynced = true;
         try {
             List<AccountEntity> unsyncedAccounts = accountDao.getUnsyncedAccounts();
             Log.d(TAG, "Found " + unsyncedAccounts.size() + " unsynced accounts");
@@ -77,29 +79,31 @@ public class FirebaseSyncManager {
                     accountData.put("isDeleted", account.isDeleted);
                     accountData.put("updatedAt", account.updatedAt);
 
-                    // Synchronously wait for Firestore write to complete
                     Tasks.await(firestore.collection("accounts")
                             .document(account.id)
                             .set(accountData));
 
-                    // Update succeeded, mark as synced in local DB
                     account.isSynced = true;
                     accountDao.updateAccount(account);
                     Log.d(TAG, "Account synced: " + account.name + " (ID: " + account.id + ")");
-
                 } catch (ExecutionException | InterruptedException e) {
+                    allSynced = false;
                     Log.e(TAG, "Failed to sync account: " + account.name, e);
                     if (e instanceof InterruptedException) {
                         Thread.currentThread().interrupt();
+                        return false;
                     }
                 }
             }
         } catch (Exception e) {
             Log.e(TAG, "Error fetching unsynced accounts", e);
+            return false;
         }
+        return allSynced;
     }
 
-    private void syncUnsyncedTags() {
+    private boolean syncUnsyncedTags() {
+        boolean allSynced = true;
         try {
             List<TagEntity> unsyncedTags = tagDao.getUnsyncedTags();
             Log.d(TAG, "Found " + unsyncedTags.size() + " unsynced tags");
@@ -115,29 +119,31 @@ public class FirebaseSyncManager {
                     tagData.put("isDeleted", tag.isDeleted);
                     tagData.put("updatedAt", tag.updatedAt);
 
-                    // Synchronously wait for Firestore write to complete
                     Tasks.await(firestore.collection("tags")
                             .document(tag.id)
                             .set(tagData));
 
-                    // Update succeeded, mark as synced in local DB
                     tag.isSynced = true;
                     tagDao.updateTag(tag);
                     Log.d(TAG, "Tag synced: " + tag.name + " (ID: " + tag.id + ")");
-
                 } catch (ExecutionException | InterruptedException e) {
+                    allSynced = false;
                     Log.e(TAG, "Failed to sync tag: " + tag.name, e);
                     if (e instanceof InterruptedException) {
                         Thread.currentThread().interrupt();
+                        return false;
                     }
                 }
             }
         } catch (Exception e) {
             Log.e(TAG, "Error fetching unsynced tags", e);
+            return false;
         }
+        return allSynced;
     }
 
-    private void syncUnsyncedTransactions() {
+    private boolean syncUnsyncedTransactions() {
+        boolean allSynced = true;
         try {
             List<TransactionEntity> unsyncedTransactions = transactionDao.getUnsyncedTransactions();
             Log.d(TAG, "Found " + unsyncedTransactions.size() + " unsynced transactions");
@@ -159,26 +165,26 @@ public class FirebaseSyncManager {
                     transactionData.put("isDeleted", transaction.isDeleted);
                     transactionData.put("updatedAt", transaction.updatedAt);
 
-                    // Synchronously wait for Firestore write to complete
                     Tasks.await(firestore.collection("transactions")
                             .document(transaction.id)
                             .set(transactionData));
 
-                    // Update succeeded, mark as synced in local DB
                     transaction.isSynced = true;
                     transactionDao.updateTransaction(transaction);
                     Log.d(TAG, "Transaction synced: " + transaction.title + " (ID: " + transaction.id + ")");
-
                 } catch (ExecutionException | InterruptedException e) {
+                    allSynced = false;
                     Log.e(TAG, "Failed to sync transaction: " + transaction.title, e);
                     if (e instanceof InterruptedException) {
                         Thread.currentThread().interrupt();
+                        return false;
                     }
                 }
             }
         } catch (Exception e) {
             Log.e(TAG, "Error fetching unsynced transactions", e);
+            return false;
         }
+        return allSynced;
     }
 }
-

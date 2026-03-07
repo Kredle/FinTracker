@@ -5,10 +5,12 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.work.Constraints;
-import androidx.work.ExistingWorkPolicy;
+import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.NetworkType;
-import androidx.work.OneTimeWorkRequest;
+import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * SyncScheduler manages scheduling of Firebase sync operations via WorkManager.
@@ -17,37 +19,35 @@ import androidx.work.WorkManager;
 public class SyncScheduler {
 
     private static final String TAG = "SYNC_SCHEDULER";
-    private static final String SYNC_WORK_NAME = "firebase_sync_work";
+    private static final String SYNC_WORK_NAME = "firebase_sync_periodic_work";
 
     /**
-     * Schedules a Firebase sync operation.
-     * The sync will only execute when the device has network connectivity.
+     * Schedules periodic Firebase sync.
+     * WorkManager enforces a minimum 15-minute interval for periodic work.
      *
      * @param context Application or Activity context
      */
     public static void scheduleSync(@NonNull Context context) {
-        Log.d(TAG, "Scheduling Firebase sync with network constraints");
+        Log.d(TAG, "Scheduling periodic Firebase sync with network constraints");
 
-        // Set constraints to require network connectivity
         Constraints constraints = new Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build();
 
-        // Create a one-time work request for Firebase sync
-        OneTimeWorkRequest syncWorkRequest = new OneTimeWorkRequest.Builder(FirebaseSyncWorker.class)
-                .setConstraints(constraints)
-                .addTag("firebase_sync")
-                .build();
+        PeriodicWorkRequest syncWorkRequest =
+                new PeriodicWorkRequest.Builder(FirebaseSyncWorker.class, 15, TimeUnit.MINUTES)
+                        .setConstraints(constraints)
+                        .addTag("firebase_sync")
+                        .build();
 
-        // Enqueue the work request (replace existing if already queued)
         WorkManager.getInstance(context)
-                .enqueueUniqueWork(
+                .enqueueUniquePeriodicWork(
                         SYNC_WORK_NAME,
-                        ExistingWorkPolicy.REPLACE,
+                        ExistingPeriodicWorkPolicy.KEEP,
                         syncWorkRequest
                 );
 
-        Log.d(TAG, "Sync work enqueued successfully");
+        Log.d(TAG, "Periodic sync work enqueued successfully");
     }
 
     /**
@@ -60,4 +60,3 @@ public class SyncScheduler {
         Log.d(TAG, "Sync work cancelled");
     }
 }
-
