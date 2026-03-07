@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.Query;
+import androidx.room.Update;
 
 import com.example.fintracker.dal.local.entities.TransactionEntity;
 
@@ -25,6 +26,15 @@ public interface TransactionDao {
      */
     @Insert
     void insertTransaction(@NonNull TransactionEntity transaction);
+
+    /**
+     * Updates an existing transaction in the database.
+     * Can be used for updating transaction fields after sync operations.
+     *
+     * @param transaction The TransactionEntity with updated values
+     */
+    @Update
+    void updateTransaction(@NonNull TransactionEntity transaction);
 
     /**
      * Retrieves all non-deleted transactions for a specific account.
@@ -56,4 +66,13 @@ public interface TransactionDao {
      */
     @Query("UPDATE transactions SET isDeleted = 1 WHERE id = :transactionId")
     void deleteTransaction(@NonNull String transactionId);
+
+    /**
+     * Retrieves all transactions that need to be synced.
+     * Transactions with isSynced = false are candidates for cloud sync.
+     *
+     * @return List of unsynchronized TransactionEntity objects
+     */
+    @Query("SELECT * FROM transactions WHERE isSynced = 0")
+    List<TransactionEntity> getUnsyncedTransactions();
 }
