@@ -1,6 +1,7 @@
 package com.example.fintracker.dal.local.dao;
 
 import androidx.annotation.NonNull;
+import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.Query;
@@ -42,10 +43,13 @@ public interface TransactionDao {
      * Results are ordered by timestamp in descending order (newest first).
      *
      * @param accountId The account's unique identifier (UUID)
-     * @return List of TransactionEntity objects for the account, empty list if none exist
+     * @return LiveData list of TransactionEntity objects for the account, empty list if none exist
      */
     @Query("SELECT * FROM transactions WHERE accountId = :accountId AND isDeleted = 0 ORDER BY timestamp DESC")
-    List<TransactionEntity> getTransactionsByAccountId(@NonNull String accountId);
+    LiveData<List<TransactionEntity>> getTransactionsByAccountId(@NonNull String accountId);
+
+    @Query("SELECT * FROM transactions WHERE accountId = :accountId AND isDeleted = 0 ORDER BY timestamp DESC")
+    List<TransactionEntity> getTransactionsByAccountIdSync(@NonNull String accountId);
 
     /**
      * Searches for transactions by keyword in title or description.
@@ -54,10 +58,13 @@ public interface TransactionDao {
      *
      * @param accountId The account's unique identifier (UUID)
      * @param searchQuery The search keyword (will be matched against title and description using LIKE %query%)
-     * @return List of matching TransactionEntity objects, empty list if none match
+     * @return LiveData list of matching TransactionEntity objects, empty list if none match
      */
     @Query("SELECT * FROM transactions WHERE accountId = :accountId AND isDeleted = 0 AND (title LIKE '%' || :searchQuery || '%' OR description LIKE '%' || :searchQuery || '%') ORDER BY timestamp DESC")
-    List<TransactionEntity> searchTransactions(@NonNull String accountId, @NonNull String searchQuery);
+    LiveData<List<TransactionEntity>> searchTransactions(@NonNull String accountId, @NonNull String searchQuery);
+
+    @Query("SELECT * FROM transactions WHERE accountId = :accountId AND isDeleted = 0 AND (title LIKE '%' || :searchQuery || '%' OR description LIKE '%' || :searchQuery || '%') ORDER BY timestamp DESC")
+    List<TransactionEntity> searchTransactionsSync(@NonNull String accountId, @NonNull String searchQuery);
 
     /**
      * Soft-deletes a transaction by setting isDeleted flag to true.

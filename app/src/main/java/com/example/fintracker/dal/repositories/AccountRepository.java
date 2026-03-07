@@ -4,6 +4,7 @@ import android.app.Application;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.lifecycle.LiveData;
 
 import com.example.fintracker.dal.local.dao.AccountDao;
 import com.example.fintracker.dal.local.database.AppDatabase;
@@ -75,47 +76,16 @@ public class AccountRepository {
         });
     }
 
-    public void getAccountsByUserId(
-            @NonNull final String ownerId,
-            @NonNull final DataCallback<List<AccountEntity>> callback
-    ) {
-        executorService.execute(() -> {
-            try {
-                final List<AccountEntity> result = accountDao.getAccountsByUserId(ownerId);
-                callbackExecutor.execute(() -> callback.onSuccess(result));
-            } catch (Exception e) {
-                callbackExecutor.execute(() -> callback.onError(e));
-            }
-        });
+    public LiveData<List<AccountEntity>> getAccountsByUserId(@NonNull String ownerId) {
+        return accountDao.getAccountsByUserId(ownerId);
     }
 
-    public void getAccountById(
-            @NonNull final String accountId,
-            @NonNull final DataCallback<AccountEntity> callback
-    ) {
-        executorService.execute(() -> {
-            try {
-                final AccountEntity result = accountDao.getAccountById(accountId);
-                callbackExecutor.execute(() -> callback.onSuccess(result));
-            } catch (Exception e) {
-                callbackExecutor.execute(() -> callback.onError(e));
-            }
-        });
+    public LiveData<@Nullable AccountEntity> getAccountById(@NonNull String accountId) {
+        return accountDao.getAccountById(accountId);
     }
 
-    public void getAccountByNameAndOwner(
-            @NonNull final String name,
-            @NonNull final String ownerId,
-            @NonNull final DataCallback<AccountEntity> callback
-    ) {
-        executorService.execute(() -> {
-            try {
-                final AccountEntity result = accountDao.getAccountByNameAndOwner(name, ownerId);
-                callbackExecutor.execute(() -> callback.onSuccess(result));
-            } catch (Exception e) {
-                callbackExecutor.execute(() -> callback.onError(e));
-            }
-        });
+    public LiveData<@Nullable AccountEntity> getAccountByNameAndOwner(@NonNull String name, @NonNull String ownerId) {
+        return accountDao.getAccountByNameAndOwner(name, ownerId);
     }
 
     public void updateAccountBalance(
@@ -145,29 +115,8 @@ public class AccountRepository {
         executorService.execute(() -> accountDao.hardDeleteAccount(account));
     }
 
-    public void getAllAccountsByUserIdIncludingDeleted(
-            @NonNull final String ownerId,
-            @NonNull final DataCallback<List<AccountEntity>> callback
-    ) {
-        executorService.execute(() -> {
-            try {
-                final List<AccountEntity> result = accountDao.getAllAccountsByUserIdIncludingDeleted(ownerId);
-                callbackExecutor.execute(() -> callback.onSuccess(result));
-            } catch (Exception e) {
-                callbackExecutor.execute(() -> callback.onError(e));
-            }
-        });
-    }
-
-    public void getUnsyncedAccounts(@NonNull final DataCallback<List<AccountEntity>> callback) {
-        executorService.execute(() -> {
-            try {
-                final List<AccountEntity> result = accountDao.getUnsyncedAccounts();
-                callbackExecutor.execute(() -> callback.onSuccess(result));
-            } catch (Exception e) {
-                callbackExecutor.execute(() -> callback.onError(e));
-            }
-        });
+    public LiveData<List<AccountEntity>> getAllAccountsByUserIdIncludingDeleted(@NonNull String ownerId) {
+        return accountDao.getAllAccountsByUserIdIncludingDeleted(ownerId);
     }
 
     public void shutdown() {

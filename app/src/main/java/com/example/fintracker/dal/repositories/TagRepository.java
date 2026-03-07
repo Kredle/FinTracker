@@ -4,6 +4,7 @@ import android.app.Application;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.lifecycle.LiveData;
 
 import com.example.fintracker.dal.local.dao.TagDao;
 import com.example.fintracker.dal.local.database.AppDatabase;
@@ -75,72 +76,24 @@ public class TagRepository {
         });
     }
 
-    public void getTagsByUserId(
-            @NonNull final String ownerId,
-            @NonNull final DataCallback<List<TagEntity>> callback
-    ) {
-        executorService.execute(() -> {
-            try {
-                final List<TagEntity> result = tagDao.getTagsByUserId(ownerId);
-                callbackExecutor.execute(() -> callback.onSuccess(result));
-            } catch (Exception e) {
-                callbackExecutor.execute(() -> callback.onError(e));
-            }
-        });
+    public LiveData<List<TagEntity>> getTagsByUserId(@NonNull String ownerId) {
+        return tagDao.getTagsByUserId(ownerId);
     }
 
-    public void getDefaultTags(@NonNull final DataCallback<List<TagEntity>> callback) {
-        executorService.execute(() -> {
-            try {
-                final List<TagEntity> result = tagDao.getDefaultTags();
-                callbackExecutor.execute(() -> callback.onSuccess(result));
-            } catch (Exception e) {
-                callbackExecutor.execute(() -> callback.onError(e));
-            }
-        });
+    public LiveData<List<TagEntity>> getDefaultTags() {
+        return tagDao.getDefaultTags();
     }
 
-    public void getTagById(
-            @NonNull final String tagId,
-            @NonNull final DataCallback<TagEntity> callback
-    ) {
-        executorService.execute(() -> {
-            try {
-                final TagEntity result = tagDao.getTagById(tagId);
-                callbackExecutor.execute(() -> callback.onSuccess(result));
-            } catch (Exception e) {
-                callbackExecutor.execute(() -> callback.onError(e));
-            }
-        });
+    public LiveData<@Nullable TagEntity> getTagById(@NonNull String tagId) {
+        return tagDao.getTagById(tagId);
     }
 
-    public void getTagByNameAndOwner(
-            @NonNull final String name,
-            @NonNull final String ownerId,
-            @NonNull final DataCallback<TagEntity> callback
-    ) {
-        executorService.execute(() -> {
-            try {
-                final TagEntity result = tagDao.getTagByNameAndOwner(name, ownerId);
-                callbackExecutor.execute(() -> callback.onSuccess(result));
-            } catch (Exception e) {
-                callbackExecutor.execute(() -> callback.onError(e));
-            }
-        });
+    public LiveData<@Nullable TagEntity> getTagByNameAndOwner(@NonNull String name, @NonNull String ownerId) {
+        return tagDao.getTagByNameAndOwner(name, ownerId);
     }
 
-    public void getAllAvailableTags(
-            @NonNull final String ownerId,
-            @NonNull final DataCallback<List<TagEntity>> callback
-    ) {
-        executorService.execute(() -> {
-            try {
-                final List<TagEntity> result = tagDao.getAllAvailableTags(ownerId);
-                callbackExecutor.execute(() -> callback.onSuccess(result));
-            } catch (Exception e) {
-                callbackExecutor.execute(() -> callback.onError(e));
-            }
-        });
+    public LiveData<List<TagEntity>> getAllAvailableTags(@NonNull String ownerId) {
+        return tagDao.getAllAvailableTags(ownerId);
     }
 
     public void updateTag(@NonNull final TagEntity tag) {

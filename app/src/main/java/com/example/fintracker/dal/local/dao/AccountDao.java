@@ -2,6 +2,7 @@ package com.example.fintracker.dal.local.dao;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Delete;
 import androidx.room.Insert;
@@ -34,21 +35,27 @@ public interface AccountDao {
      * Used to display a user's accounts in the UI.
      *
      * @param ownerId The owner's user ID (UUID)
-     * @return List of AccountEntity objects for the user, empty list if none exist
+     * @return LiveData that emits the list of AccountEntity objects for the user; emits an empty list if none exist
      */
     @Query("SELECT * FROM accounts WHERE ownerId = :ownerId AND isDeleted = 0 ORDER BY name ASC")
-    List<AccountEntity> getAccountsByUserId(@NonNull String ownerId);
+    LiveData<List<AccountEntity>> getAccountsByUserId(@NonNull String ownerId);
+
+    @Query("SELECT * FROM accounts WHERE ownerId = :ownerId AND isDeleted = 0 ORDER BY name ASC")
+    List<AccountEntity> getAccountsByUserIdSync(@NonNull String ownerId);
 
     /**
      * Retrieves a specific account by its ID.
      * Useful for loading account details or updating balance.
      *
      * @param accountId The account's unique identifier (UUID)
-     * @return AccountEntity if found, null otherwise
+     * @return LiveData that emits the AccountEntity if found, or null if the account doesn't exist
      */
     @Query("SELECT * FROM accounts WHERE id = :accountId AND isDeleted = 0 LIMIT 1")
+    LiveData<@Nullable AccountEntity> getAccountById(@NonNull String accountId);
+
+    @Query("SELECT * FROM accounts WHERE id = :accountId AND isDeleted = 0 LIMIT 1")
     @Nullable
-    AccountEntity getAccountById(@NonNull String accountId);
+    AccountEntity getAccountByIdSync(@NonNull String accountId);
 
     /**
      * Retrieves a specific account by name and owner.
@@ -56,11 +63,14 @@ public interface AccountDao {
      *
      * @param name The account name
      * @param ownerId The owner's user ID
-     * @return AccountEntity if found, null otherwise
+     * @return LiveData that emits the AccountEntity if found, or null if the account doesn't exist
      */
     @Query("SELECT * FROM accounts WHERE name = :name AND ownerId = :ownerId AND isDeleted = 0 LIMIT 1")
+    LiveData<@Nullable AccountEntity> getAccountByNameAndOwner(@NonNull String name, @NonNull String ownerId);
+
+    @Query("SELECT * FROM accounts WHERE name = :name AND ownerId = :ownerId AND isDeleted = 0 LIMIT 1")
     @Nullable
-    AccountEntity getAccountByNameAndOwner(@NonNull String name, @NonNull String ownerId);
+    AccountEntity getAccountByNameAndOwnerSync(@NonNull String name, @NonNull String ownerId);
 
     /**
      * Updates the balance of a specific account.
@@ -103,13 +113,23 @@ public interface AccountDao {
 
     /**
      * Retrieves all accounts for a user, including deleted ones.
-     * Useful for sync operations that need to account for soft-deleted records.
+     * Used for UI display that needs to show historical/deleted accounts.
      *
      * @param ownerId The owner's user ID
-     * @return List of all AccountEntity objects for the user (including deleted)
+     * @return LiveData that emits a list of all AccountEntity objects for the user (including soft-deleted)
      */
     @Query("SELECT * FROM accounts WHERE ownerId = :ownerId")
-    List<AccountEntity> getAllAccountsByUserIdIncludingDeleted(@NonNull String ownerId);
+    LiveData<List<AccountEntity>> getAllAccountsByUserIdIncludingDeleted(@NonNull String ownerId);
+
+    /**
+     * Synchronously retrieves all accounts for a user, including deleted ones.
+     * Intended for tests and background jobs that require direct List access instead of LiveData.
+     *
+     * @param ownerId The owner's user ID
+     * @return List of all AccountEntity objects for the user (including soft-deleted)
+     */
+    @Query("SELECT * FROM accounts WHERE ownerId = :ownerId")
+    List<AccountEntity> getAllAccountsByUserIdIncludingDeletedSync(@NonNull String ownerId);
 
     /**
      * Retrieves all accounts that need to be synced.
@@ -120,4 +140,3 @@ public interface AccountDao {
     @Query("SELECT * FROM accounts WHERE isSynced = 0")
     List<AccountEntity> getUnsyncedAccounts();
 }
-

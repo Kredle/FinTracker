@@ -2,6 +2,7 @@ package com.example.fintracker.dal.local.dao;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.Query;
@@ -35,10 +36,13 @@ public interface SharedAccountMemberDao {
      * Used to display the list of users who have access to the account.
      *
      * @param accountId The account's unique identifier (UUID)
-     * @return List of SharedAccountMemberEntity objects for the account, empty list if none exist
+     * @return LiveData list of SharedAccountMemberEntity objects for the account
      */
     @Query("SELECT * FROM shared_account_members WHERE accountId = :accountId AND isDeleted = 0")
-    List<SharedAccountMemberEntity> getMembersForAccount(@NonNull String accountId);
+    LiveData<List<SharedAccountMemberEntity>> getMembersForAccount(@NonNull String accountId);
+
+    @Query("SELECT * FROM shared_account_members WHERE accountId = :accountId AND isDeleted = 0")
+    List<SharedAccountMemberEntity> getMembersForAccountSync(@NonNull String accountId);
 
     /**
      * Retrieves a specific active membership by account and user.
@@ -46,11 +50,14 @@ public interface SharedAccountMemberDao {
      *
      * @param accountId The account's unique identifier (UUID)
      * @param userId The user's unique identifier (UUID)
-     * @return SharedAccountMemberEntity if found, null if user is not an active member
+     * @return LiveData that emits the SharedAccountMemberEntity if found, or null if the user is not an active member
      */
     @Query("SELECT * FROM shared_account_members WHERE accountId = :accountId AND userId = :userId AND isDeleted = 0 LIMIT 1")
+    LiveData<@Nullable SharedAccountMemberEntity> getMember(@NonNull String accountId, @NonNull String userId);
+
+    @Query("SELECT * FROM shared_account_members WHERE accountId = :accountId AND userId = :userId AND isDeleted = 0 LIMIT 1")
     @Nullable
-    SharedAccountMemberEntity getMember(@NonNull String accountId, @NonNull String userId);
+    SharedAccountMemberEntity getMemberSync(@NonNull String accountId, @NonNull String userId);
 
     /**
      * Updates the role of a specific member in a shared account.

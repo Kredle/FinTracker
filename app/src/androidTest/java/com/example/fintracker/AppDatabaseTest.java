@@ -246,7 +246,7 @@ public class AppDatabaseTest {
         assertTrue(AccountValidator.validateAccountCreation(accountName, initialBalance));
 
         // Check if account already exists (idempotent operation)
-        AccountEntity existingAccount = accountDao.getAccountByNameAndOwner(accountName, userId);
+        AccountEntity existingAccount = accountDao.getAccountByNameAndOwnerSync(accountName, userId);
         if (existingAccount == null) {
             // Create new account
             AccountEntity account = new AccountEntity();
@@ -263,7 +263,7 @@ public class AppDatabaseTest {
         }
 
         // Retrieve accounts for user
-        List<AccountEntity> accounts = accountDao.getAccountsByUserId(userId);
+        List<AccountEntity> accounts = accountDao.getAccountsByUserIdSync(userId);
         assertFalse(accounts.isEmpty());
         assertEquals(1, accounts.size());
         assertEquals(accountName, accounts.get(0).name);
@@ -282,7 +282,7 @@ public class AppDatabaseTest {
         assertEquals(1, rowsAffected);
 
         // Verify update
-        AccountEntity updatedAccount = accountDao.getAccountById(accountId);
+        AccountEntity updatedAccount = accountDao.getAccountByIdSync(accountId);
         assertNotNull(updatedAccount);
         assertEquals(newBalance, updatedAccount.balance, 0.01);
     }
@@ -301,7 +301,7 @@ public class AppDatabaseTest {
         assertEquals(0, rowsAffected); // Should not update deleted account
 
         // Verify account is not visible in normal queries
-        AccountEntity deletedAccount = accountDao.getAccountById(accountId);
+        AccountEntity deletedAccount = accountDao.getAccountByIdSync(accountId);
         assertNull(deletedAccount);
     }
 
@@ -320,7 +320,7 @@ public class AppDatabaseTest {
         assertEquals(accountId1, accountId2);
 
         // Verify only one account exists
-        List<AccountEntity> accounts = accountDao.getAccountsByUserId(userId);
+        List<AccountEntity> accounts = accountDao.getAccountsByUserIdSync(userId);
         assertEquals(1, accounts.size());
     }
 
@@ -358,7 +358,7 @@ public class AppDatabaseTest {
         assertTrue(TagValidator.validateTagCreation(tagName));
 
         // Check if tag already exists (idempotent operation)
-        TagEntity existingTag = tagDao.getTagByNameAndOwner(tagName, userId);
+        TagEntity existingTag = tagDao.getTagByNameAndOwnerSync(tagName, userId);
         if (existingTag == null) {
             // Create new tag
             TagEntity tag = new TagEntity();
@@ -374,7 +374,7 @@ public class AppDatabaseTest {
         }
 
         // Retrieve tags for user
-        List<TagEntity> tags = tagDao.getTagsByUserId(userId);
+        List<TagEntity> tags = tagDao.getTagsByUserIdSync(userId);
         assertFalse(tags.isEmpty());
         assertEquals(1, tags.size());
         assertEquals(tagName, tags.get(0).name);
@@ -395,7 +395,7 @@ public class AppDatabaseTest {
         assertEquals(tagId1, tagId2);
 
         // Verify only one tag exists
-        List<TagEntity> tags = tagDao.getTagsByUserId(userId);
+        List<TagEntity> tags = tagDao.getTagsByUserIdSync(userId);
         assertEquals(1, tags.size());
     }
 
@@ -414,7 +414,7 @@ public class AppDatabaseTest {
         tagDao.insertTag(defaultTag);
 
         // Retrieve default tags
-        List<TagEntity> defaultTags = tagDao.getDefaultTags();
+        List<TagEntity> defaultTags = tagDao.getDefaultTagsSync();
         assertFalse(defaultTags.isEmpty());
         assertTrue(defaultTags.stream().anyMatch(t -> "Food".equals(t.name)));
     }
@@ -529,7 +529,7 @@ public class AppDatabaseTest {
 
         transactionDao.insertTransaction(transaction);
 
-        List<TransactionEntity> found = transactionDao.searchTransactions(accountId, "coworkers");
+        List<TransactionEntity> found = transactionDao.searchTransactionsSync(accountId, "coworkers");
         assertEquals(1, found.size());
         assertEquals(transaction.id, found.get(0).id);
         assertTrue(found.get(0).description.contains("coworkers"));
@@ -557,7 +557,7 @@ public class AppDatabaseTest {
 
         transactionDao.insertTransaction(transaction);
 
-        List<TransactionEntity> found = transactionDao.searchTransactions(accountId, "Coffee");
+        List<TransactionEntity> found = transactionDao.searchTransactionsSync(accountId, "Coffee");
         assertEquals(1, found.size());
         assertEquals(transaction.id, found.get(0).id);
     }
@@ -669,10 +669,10 @@ public class AppDatabaseTest {
 
         limitDao.insertLimit(limit);
 
-        List<LimitEntity> limitsForAccount = limitDao.getLimitsByAccountId(accountId);
+        List<LimitEntity> limitsForAccount = limitDao.getLimitsByAccountIdSync(accountId);
         assertEquals(1, limitsForAccount.size());
 
-        LimitEntity loaded = limitDao.getLimitByAccountAndTag(accountId, tagId);
+        LimitEntity loaded = limitDao.getLimitByAccountAndTagSync(accountId, tagId);
         assertNotNull(loaded);
         assertEquals(limit.id, loaded.id);
         assertEquals(500.0, loaded.amountLimit, 0.01);
@@ -714,7 +714,7 @@ public class AppDatabaseTest {
         limitDao.insertLimit(limit2);
 
         // Should return the most recently updated limit (limit2)
-        LimitEntity retrieved = limitDao.getLimitByAccountAndTag(accountId, tagId);
+        LimitEntity retrieved = limitDao.getLimitByAccountAndTagSync(accountId, tagId);
         assertNotNull(retrieved);
         assertEquals(limit2.id, retrieved.id);
         assertEquals(400.0, retrieved.amountLimit, 0.01);
@@ -740,7 +740,7 @@ public class AppDatabaseTest {
         limitDao.insertLimit(accountLimit);
 
         // Retrieve the account-wide limit
-        LimitEntity retrieved = limitDao.getAccountWideLimitByAccountId(accountId);
+        LimitEntity retrieved = limitDao.getAccountWideLimitByAccountIdSync(accountId);
         assertNotNull(retrieved);
         assertEquals(accountLimit.id, retrieved.id);
         assertEquals(1000.0, retrieved.amountLimit, 0.01);
@@ -782,18 +782,18 @@ public class AppDatabaseTest {
         limitDao.insertLimit(tagLimit);
 
         // Verify both can be retrieved separately
-        LimitEntity retrievedAccountLimit = limitDao.getAccountWideLimitByAccountId(accountId);
+        LimitEntity retrievedAccountLimit = limitDao.getAccountWideLimitByAccountIdSync(accountId);
         assertNotNull(retrievedAccountLimit);
         assertEquals(accountLimit.id, retrievedAccountLimit.id);
         assertNull(retrievedAccountLimit.tagId);
 
-        LimitEntity retrievedTagLimit = limitDao.getLimitByAccountAndTag(accountId, tagId);
+        LimitEntity retrievedTagLimit = limitDao.getLimitByAccountAndTagSync(accountId, tagId);
         assertNotNull(retrievedTagLimit);
         assertEquals(tagLimit.id, retrievedTagLimit.id);
         assertEquals(tagId, retrievedTagLimit.tagId);
 
         // Verify getLimitsByAccountId returns both
-        List<LimitEntity> allLimits = limitDao.getLimitsByAccountId(accountId);
+        List<LimitEntity> allLimits = limitDao.getLimitsByAccountIdSync(accountId);
         assertEquals(2, allLimits.size());
     }
 
@@ -841,7 +841,7 @@ public class AppDatabaseTest {
      * Returns existing account ID if account already exists, otherwise creates new account.
      */
     private String createTestAccountIdempotent(String userId, String accountName, double balance) {
-        AccountEntity existingAccount = accountDao.getAccountByNameAndOwner(accountName, userId);
+        AccountEntity existingAccount = accountDao.getAccountByNameAndOwnerSync(accountName, userId);
         if (existingAccount != null) {
             return existingAccount.id;
         }
@@ -870,7 +870,7 @@ public class AppDatabaseTest {
      * Returns existing tag ID if tag already exists, otherwise creates new tag.
      */
     private String createTestTagIdempotent(String userId, String tagName) {
-        TagEntity existingTag = tagDao.getTagByNameAndOwner(tagName, userId);
+        TagEntity existingTag = tagDao.getTagByNameAndOwnerSync(tagName, userId);
         if (existingTag != null) {
             return existingTag.id;
         }
@@ -952,7 +952,7 @@ public class AppDatabaseTest {
         sharedAccountMemberDao.addMember(member);
 
         // Retrieve the member to verify
-        SharedAccountMemberEntity retrieved = sharedAccountMemberDao.getMember(accountId, userId2);
+        SharedAccountMemberEntity retrieved = sharedAccountMemberDao.getMemberSync(accountId, userId2);
         assertNotNull(retrieved);
         assertEquals(member.id, retrieved.id);
         assertEquals("ADMIN", retrieved.role);
@@ -991,7 +991,7 @@ public class AppDatabaseTest {
         sharedAccountMemberDao.addMember(member2);
 
         // Retrieve all members for account
-        List<SharedAccountMemberEntity> members = sharedAccountMemberDao.getMembersForAccount(accountId);
+        List<SharedAccountMemberEntity> members = sharedAccountMemberDao.getMembersForAccountSync(accountId);
         assertEquals(2, members.size());
 
         // Verify roles
@@ -1025,7 +1025,7 @@ public class AppDatabaseTest {
         sharedAccountMemberDao.addMember(member);
 
         // Verify initial role
-        SharedAccountMemberEntity initialMember = sharedAccountMemberDao.getMember(accountId, memberId);
+        SharedAccountMemberEntity initialMember = sharedAccountMemberDao.getMemberSync(accountId, memberId);
         assertNotNull(initialMember);
         assertEquals("USER", initialMember.role);
 
@@ -1037,7 +1037,7 @@ public class AppDatabaseTest {
         assertEquals(1, rowsAffected);
 
         // Verify update
-        SharedAccountMemberEntity updatedMember = sharedAccountMemberDao.getMember(accountId, memberId);
+        SharedAccountMemberEntity updatedMember = sharedAccountMemberDao.getMemberSync(accountId, memberId);
         assertNotNull(updatedMember);
         assertEquals("ADMIN", updatedMember.role);
     }
@@ -1062,7 +1062,7 @@ public class AppDatabaseTest {
         sharedAccountMemberDao.addMember(member);
 
         // Verify member exists
-        SharedAccountMemberEntity existingMember = sharedAccountMemberDao.getMember(accountId, memberId);
+        SharedAccountMemberEntity existingMember = sharedAccountMemberDao.getMemberSync(accountId, memberId);
         assertNotNull(existingMember);
 
         // Remove member (soft delete)
@@ -1074,11 +1074,11 @@ public class AppDatabaseTest {
         assertEquals(0, rowsAffectedSecondRemove);
 
         // Verify member is no longer accessible via getMember (filters isDeleted = 0)
-        SharedAccountMemberEntity removedMember = sharedAccountMemberDao.getMember(accountId, memberId);
+        SharedAccountMemberEntity removedMember = sharedAccountMemberDao.getMemberSync(accountId, memberId);
         assertNull(removedMember);
 
         // Verify member is not in the members list
-        List<SharedAccountMemberEntity> members = sharedAccountMemberDao.getMembersForAccount(accountId);
+        List<SharedAccountMemberEntity> members = sharedAccountMemberDao.getMembersForAccountSync(accountId);
         assertEquals(0, members.size());
     }
 
@@ -1107,7 +1107,7 @@ public class AppDatabaseTest {
         assertEquals(0, rowsAffected); // Should not update deleted member
 
         // Verify member is still deleted (not accessible)
-        SharedAccountMemberEntity deletedMember = sharedAccountMemberDao.getMember(accountId, memberId);
+        SharedAccountMemberEntity deletedMember = sharedAccountMemberDao.getMemberSync(accountId, memberId);
         assertNull(deletedMember);
     }
 }

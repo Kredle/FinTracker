@@ -4,6 +4,7 @@ import android.app.Application;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.lifecycle.LiveData;
 
 import com.example.fintracker.dal.local.dao.UserDao;
 import com.example.fintracker.dal.local.database.AppDatabase;
@@ -104,32 +105,12 @@ public class UserRepository {
         });
     }
 
-    public void getUserById(
-            @NonNull final String userId,
-            @NonNull final DataCallback<UserEntity> callback
-    ) {
-        executorService.execute(() -> {
-            try {
-                final UserEntity result = userDao.getUserById(userId);
-                callbackExecutor.execute(() -> callback.onSuccess(result));
-            } catch (Exception e) {
-                callbackExecutor.execute(() -> callback.onError(e));
-            }
-        });
+    public LiveData<@Nullable UserEntity> getUserById(@NonNull String userId) {
+        return userDao.getUserById(userId);
     }
 
-    public void getUserByEmail(
-            @NonNull final String email,
-            @NonNull final DataCallback<UserEntity> callback
-    ) {
-        executorService.execute(() -> {
-            try {
-                final UserEntity result = userDao.getUserByEmail(email);
-                callbackExecutor.execute(() -> callback.onSuccess(result));
-            } catch (Exception e) {
-                callbackExecutor.execute(() -> callback.onError(e));
-            }
-        });
+    public LiveData<@Nullable UserEntity> getUserByEmail(@NonNull String email) {
+        return userDao.getUserByEmail(email);
     }
 
     public void shutdown() {

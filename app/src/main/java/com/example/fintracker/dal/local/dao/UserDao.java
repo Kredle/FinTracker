@@ -2,6 +2,7 @@ package com.example.fintracker.dal.local.dao;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.Query;
@@ -56,22 +57,42 @@ public interface UserDao {
      * Useful for profile lookups and session management.
      *
      * @param userId The user's unique identifier
+     * @return LiveData that emits the UserEntity if found, or null if the user doesn't exist
+     */
+    @Query("SELECT * FROM users WHERE id = :userId LIMIT 1")
+    LiveData<@Nullable UserEntity> getUserById(@NonNull String userId);
+
+    /**
+     * Retrieves a user by their ID (UUID) synchronously.
+     * Useful for profile lookups and session management when LiveData is not required.
+     *
+     * @param userId The user's unique identifier
      * @return UserEntity if found, null otherwise
      */
     @Query("SELECT * FROM users WHERE id = :userId LIMIT 1")
     @Nullable
-    UserEntity getUserById(@NonNull String userId);
+    UserEntity getUserByIdSync(@NonNull String userId);
 
     /**
      * Retrieves a user by email address.
      * Useful for email-based lookups.
      *
      * @param email The email address to search for
+     * @return LiveData that emits the UserEntity if found, or null if the user doesn't exist
+     */
+    @Query("SELECT * FROM users WHERE email = :email LIMIT 1")
+    LiveData<@Nullable UserEntity> getUserByEmail(@NonNull String email);
+
+    /**
+     * Retrieves a user by email address synchronously.
+     * Useful for email-based lookups when LiveData is not required.
+     *
+     * @param email The email address to search for
      * @return UserEntity if found, null otherwise
      */
     @Query("SELECT * FROM users WHERE email = :email LIMIT 1")
     @Nullable
-    UserEntity getUserByEmail(@NonNull String email);
+    UserEntity getUserByEmailSync(@NonNull String email);
 
     /**
      * Retrieves all unsynced users (isSynced = false).
@@ -91,4 +112,3 @@ public interface UserDao {
     @Update
     void updateUser(@NonNull UserEntity user);
 }
-

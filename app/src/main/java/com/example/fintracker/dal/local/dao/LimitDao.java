@@ -2,6 +2,7 @@ package com.example.fintracker.dal.local.dao;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.Query;
@@ -37,10 +38,13 @@ public interface LimitDao {
      * This includes both account-wide limits and tag-specific limits.
      *
      * @param accountId The account's unique identifier (UUID)
-     * @return List of LimitEntity objects for the account, empty list if none exist
+     * @return LiveData object containing a list of LimitEntity objects for the account
      */
     @Query("SELECT * FROM limits WHERE accountId = :accountId AND isDeleted = 0")
-    List<LimitEntity> getLimitsByAccountId(@NonNull String accountId);
+    LiveData<List<LimitEntity>> getLimitsByAccountId(@NonNull String accountId);
+
+    @Query("SELECT * FROM limits WHERE accountId = :accountId AND isDeleted = 0")
+    List<LimitEntity> getLimitsByAccountIdSync(@NonNull String accountId);
 
     /**
      * Retrieves the account-wide limit for a specific account (where tagId is NULL).
@@ -48,11 +52,14 @@ public interface LimitDao {
      * This deterministic ordering ensures consistent results.
      *
      * @param accountId The account's unique identifier (UUID)
-     * @return LimitEntity if an account-wide limit exists, null otherwise
+     * @return LiveData that emits the LimitEntity if an account-wide limit exists, or null otherwise
      */
     @Query("SELECT * FROM limits WHERE accountId = :accountId AND tagId IS NULL AND isDeleted = 0 ORDER BY updatedAt DESC LIMIT 1")
+    LiveData<@Nullable LimitEntity> getAccountWideLimitByAccountId(@NonNull String accountId);
+
+    @Query("SELECT * FROM limits WHERE accountId = :accountId AND tagId IS NULL AND isDeleted = 0 ORDER BY updatedAt DESC LIMIT 1")
     @Nullable
-    LimitEntity getAccountWideLimitByAccountId(@NonNull String accountId);
+    LimitEntity getAccountWideLimitByAccountIdSync(@NonNull String accountId);
 
     /**
      * Retrieves a specific tag-specific limit by account and tag.
@@ -62,11 +69,14 @@ public interface LimitDao {
      *
      * @param accountId The account's unique identifier (UUID)
      * @param tagId The tag's unique identifier (UUID, must not be null)
-     * @return LimitEntity if found, null otherwise
+     * @return LiveData that emits the LimitEntity if found, or null otherwise
      */
     @Query("SELECT * FROM limits WHERE accountId = :accountId AND tagId = :tagId AND isDeleted = 0 ORDER BY updatedAt DESC LIMIT 1")
+    LiveData<@Nullable LimitEntity> getLimitByAccountAndTag(@NonNull String accountId, @NonNull String tagId);
+
+    @Query("SELECT * FROM limits WHERE accountId = :accountId AND tagId = :tagId AND isDeleted = 0 ORDER BY updatedAt DESC LIMIT 1")
     @Nullable
-    LimitEntity getLimitByAccountAndTag(@NonNull String accountId, @NonNull String tagId);
+    LimitEntity getLimitByAccountAndTagSync(@NonNull String accountId, @NonNull String tagId);
 
     /**
      * Retrieves all unsynced limits (isSynced = false).
