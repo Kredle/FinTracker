@@ -4,6 +4,7 @@ import android.app.Application;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.lifecycle.LiveData;
 
 import com.example.fintracker.dal.local.dao.LimitDao;
 import com.example.fintracker.dal.local.database.AppDatabase;
@@ -75,47 +76,16 @@ public class LimitRepository {
         });
     }
 
-    public void getLimitsByAccountId(
-            @NonNull final String accountId,
-            @NonNull final DataCallback<List<LimitEntity>> callback
-    ) {
-        executorService.execute(() -> {
-            try {
-                final List<LimitEntity> result = limitDao.getLimitsByAccountId(accountId);
-                callbackExecutor.execute(() -> callback.onSuccess(result));
-            } catch (Exception e) {
-                callbackExecutor.execute(() -> callback.onError(e));
-            }
-        });
+    public LiveData<List<LimitEntity>> getLimitsByAccountId(@NonNull String accountId) {
+        return limitDao.getLimitsByAccountId(accountId);
     }
 
-    public void getAccountWideLimitByAccountId(
-            @NonNull final String accountId,
-            @NonNull final DataCallback<LimitEntity> callback
-    ) {
-        executorService.execute(() -> {
-            try {
-                final LimitEntity result = limitDao.getAccountWideLimitByAccountId(accountId);
-                callbackExecutor.execute(() -> callback.onSuccess(result));
-            } catch (Exception e) {
-                callbackExecutor.execute(() -> callback.onError(e));
-            }
-        });
+    public LiveData<LimitEntity> getAccountWideLimitByAccountId(@NonNull String accountId) {
+        return limitDao.getAccountWideLimitByAccountId(accountId);
     }
 
-    public void getLimitByAccountAndTag(
-            @NonNull final String accountId,
-            @NonNull final String tagId,
-            @NonNull final DataCallback<LimitEntity> callback
-    ) {
-        executorService.execute(() -> {
-            try {
-                final LimitEntity result = limitDao.getLimitByAccountAndTag(accountId, tagId);
-                callbackExecutor.execute(() -> callback.onSuccess(result));
-            } catch (Exception e) {
-                callbackExecutor.execute(() -> callback.onError(e));
-            }
-        });
+    public LiveData<LimitEntity> getLimitByAccountAndTag(@NonNull String accountId, @NonNull String tagId) {
+        return limitDao.getLimitByAccountAndTag(accountId, tagId);
     }
 
     public void shutdown() {

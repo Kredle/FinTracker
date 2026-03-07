@@ -4,6 +4,7 @@ import android.app.Application;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.lifecycle.LiveData;
 
 import com.example.fintracker.dal.local.dao.SharedAccountMemberDao;
 import com.example.fintracker.dal.local.database.AppDatabase;
@@ -75,33 +76,12 @@ public class SharedAccountMemberRepository {
         });
     }
 
-    public void getMembersForAccount(
-            @NonNull final String accountId,
-            @NonNull final DataCallback<List<SharedAccountMemberEntity>> callback
-    ) {
-        executorService.execute(() -> {
-            try {
-                final List<SharedAccountMemberEntity> result = sharedAccountMemberDao.getMembersForAccount(accountId);
-                callbackExecutor.execute(() -> callback.onSuccess(result));
-            } catch (Exception e) {
-                callbackExecutor.execute(() -> callback.onError(e));
-            }
-        });
+    public LiveData<List<SharedAccountMemberEntity>> getMembersForAccount(@NonNull String accountId) {
+        return sharedAccountMemberDao.getMembersForAccount(accountId);
     }
 
-    public void getMember(
-            @NonNull final String accountId,
-            @NonNull final String userId,
-            @NonNull final DataCallback<SharedAccountMemberEntity> callback
-    ) {
-        executorService.execute(() -> {
-            try {
-                final SharedAccountMemberEntity result = sharedAccountMemberDao.getMember(accountId, userId);
-                callbackExecutor.execute(() -> callback.onSuccess(result));
-            } catch (Exception e) {
-                callbackExecutor.execute(() -> callback.onError(e));
-            }
-        });
+    public LiveData<SharedAccountMemberEntity> getMember(@NonNull String accountId, @NonNull String userId) {
+        return sharedAccountMemberDao.getMember(accountId, userId);
     }
 
     public void updateMemberRole(

@@ -1,7 +1,7 @@
 package com.example.fintracker.dal.local.dao;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
+import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.Query;
@@ -37,7 +37,6 @@ public interface UserDao {
      * @return UserEntity if found, null otherwise
      */
     @Query("SELECT * FROM users WHERE (email = :login OR name = :login) AND password = :password LIMIT 1")
-    @Nullable
     UserEntity getUserByEmailOrName(@NonNull String login, @NonNull String password);
 
     /**
@@ -59,8 +58,7 @@ public interface UserDao {
      * @return UserEntity if found, null otherwise
      */
     @Query("SELECT * FROM users WHERE id = :userId LIMIT 1")
-    @Nullable
-    UserEntity getUserById(@NonNull String userId);
+    LiveData<UserEntity> getUserById(@NonNull String userId);
 
     /**
      * Retrieves a user by email address.
@@ -70,8 +68,7 @@ public interface UserDao {
      * @return UserEntity if found, null otherwise
      */
     @Query("SELECT * FROM users WHERE email = :email LIMIT 1")
-    @Nullable
-    UserEntity getUserByEmail(@NonNull String email);
+    LiveData<UserEntity> getUserByEmail(@NonNull String email);
 
     /**
      * Retrieves all unsynced users (isSynced = false).
@@ -91,4 +88,3 @@ public interface UserDao {
     @Update
     void updateUser(@NonNull UserEntity user);
 }
-

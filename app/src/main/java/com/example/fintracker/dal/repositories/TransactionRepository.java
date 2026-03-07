@@ -4,6 +4,7 @@ import android.app.Application;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.lifecycle.LiveData;
 
 import com.example.fintracker.dal.local.dao.TransactionDao;
 import com.example.fintracker.dal.local.database.AppDatabase;
@@ -75,33 +76,12 @@ public class TransactionRepository {
         });
     }
 
-    public void getTransactionsByAccountId(
-            @NonNull final String accountId,
-            @NonNull final DataCallback<List<TransactionEntity>> callback
-    ) {
-        executorService.execute(() -> {
-            try {
-                final List<TransactionEntity> result = transactionDao.getTransactionsByAccountId(accountId);
-                callbackExecutor.execute(() -> callback.onSuccess(result));
-            } catch (Exception e) {
-                callbackExecutor.execute(() -> callback.onError(e));
-            }
-        });
+    public LiveData<List<TransactionEntity>> getTransactionsByAccountId(@NonNull String accountId) {
+        return transactionDao.getTransactionsByAccountId(accountId);
     }
 
-    public void searchTransactions(
-            @NonNull final String accountId,
-            @NonNull final String searchQuery,
-            @NonNull final DataCallback<List<TransactionEntity>> callback
-    ) {
-        executorService.execute(() -> {
-            try {
-                final List<TransactionEntity> result = transactionDao.searchTransactions(accountId, searchQuery);
-                callbackExecutor.execute(() -> callback.onSuccess(result));
-            } catch (Exception e) {
-                callbackExecutor.execute(() -> callback.onError(e));
-            }
-        });
+    public LiveData<List<TransactionEntity>> searchTransactions(@NonNull String accountId, @NonNull String searchQuery) {
+        return transactionDao.searchTransactions(accountId, searchQuery);
     }
 
     public void deleteTransaction(@NonNull final String transactionId) {

@@ -1,7 +1,7 @@
 package com.example.fintracker.dal.local.dao;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
+import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Delete;
 import androidx.room.Insert;
@@ -37,7 +37,7 @@ public interface AccountDao {
      * @return List of AccountEntity objects for the user, empty list if none exist
      */
     @Query("SELECT * FROM accounts WHERE ownerId = :ownerId AND isDeleted = 0 ORDER BY name ASC")
-    List<AccountEntity> getAccountsByUserId(@NonNull String ownerId);
+    LiveData<List<AccountEntity>> getAccountsByUserId(@NonNull String ownerId);
 
     /**
      * Retrieves a specific account by its ID.
@@ -47,8 +47,7 @@ public interface AccountDao {
      * @return AccountEntity if found, null otherwise
      */
     @Query("SELECT * FROM accounts WHERE id = :accountId AND isDeleted = 0 LIMIT 1")
-    @Nullable
-    AccountEntity getAccountById(@NonNull String accountId);
+    LiveData<AccountEntity> getAccountById(@NonNull String accountId);
 
     /**
      * Retrieves a specific account by name and owner.
@@ -59,8 +58,7 @@ public interface AccountDao {
      * @return AccountEntity if found, null otherwise
      */
     @Query("SELECT * FROM accounts WHERE name = :name AND ownerId = :ownerId AND isDeleted = 0 LIMIT 1")
-    @Nullable
-    AccountEntity getAccountByNameAndOwner(@NonNull String name, @NonNull String ownerId);
+    LiveData<AccountEntity> getAccountByNameAndOwner(@NonNull String name, @NonNull String ownerId);
 
     /**
      * Updates the balance of a specific account.
@@ -109,7 +107,7 @@ public interface AccountDao {
      * @return List of all AccountEntity objects for the user (including deleted)
      */
     @Query("SELECT * FROM accounts WHERE ownerId = :ownerId")
-    List<AccountEntity> getAllAccountsByUserIdIncludingDeleted(@NonNull String ownerId);
+    LiveData<List<AccountEntity>> getAllAccountsByUserIdIncludingDeleted(@NonNull String ownerId);
 
     /**
      * Retrieves all accounts that need to be synced.
@@ -120,4 +118,3 @@ public interface AccountDao {
     @Query("SELECT * FROM accounts WHERE isSynced = 0")
     List<AccountEntity> getUnsyncedAccounts();
 }
-
