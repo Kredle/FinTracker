@@ -5,6 +5,7 @@ import android.os.Handler;
 import android.os.Looper;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.example.fintracker.dal.local.dao.TransactionDao;
 import com.example.fintracker.dal.local.database.AppDatabase;
@@ -29,8 +30,13 @@ public class TransactionRepository {
         this(
                 AppDatabase.getInstance(application).transactionDao(),
                 Executors.newSingleThreadExecutor(),
-                command -> new Handler(Looper.getMainLooper()).post(command)
+                createMainThreadExecutor()
         );
+    }
+
+    private static Executor createMainThreadExecutor() {
+        final Handler mainHandler = new Handler(Looper.getMainLooper());
+        return mainHandler::post;
     }
 
     public TransactionRepository(
@@ -44,7 +50,25 @@ public class TransactionRepository {
     }
 
     public void insertTransaction(@NonNull final TransactionEntity transaction) {
-        executorService.execute(() -> transactionDao.insertTransaction(transaction));
+        insertTransaction(transaction, null);
+    }
+
+    public void insertTransaction(
+            @NonNull final TransactionEntity transaction,
+            @Nullable final DataCallback<Void> callback
+    ) {
+        executorService.execute(() -> {
+            try {
+                transactionDao.insertTransaction(transaction);
+                if (callback != null) {
+                    callbackExecutor.execute(() -> callback.onSuccess(null));
+                }
+            } catch (Exception e) {
+                if (callback != null) {
+                    callbackExecutor.execute(() -> callback.onError(e));
+                }
+            }
+        });
     }
 
     public void getTransactionsByAccountId(
@@ -77,7 +101,25 @@ public class TransactionRepository {
     }
 
     public void deleteTransaction(@NonNull final String transactionId) {
-        executorService.execute(() -> transactionDao.deleteTransaction(transactionId));
+        deleteTransaction(transactionId, null);
+    }
+
+    public void deleteTransaction(
+            @NonNull final String transactionId,
+            @Nullable final DataCallback<Void> callback
+    ) {
+        executorService.execute(() -> {
+            try {
+                transactionDao.deleteTransaction(transactionId);
+                if (callback != null) {
+                    callbackExecutor.execute(() -> callback.onSuccess(null));
+                }
+            } catch (Exception e) {
+                if (callback != null) {
+                    callbackExecutor.execute(() -> callback.onError(e));
+                }
+            }
+        });
     }
 
     public void shutdown() {

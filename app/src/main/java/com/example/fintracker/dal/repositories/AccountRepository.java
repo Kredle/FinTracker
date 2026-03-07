@@ -5,6 +5,7 @@ import android.os.Handler;
 import android.os.Looper;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.example.fintracker.dal.local.dao.AccountDao;
 import com.example.fintracker.dal.local.database.AppDatabase;
@@ -29,8 +30,13 @@ public class AccountRepository {
         this(
                 AppDatabase.getInstance(application).accountDao(),
                 Executors.newSingleThreadExecutor(),
-                command -> new Handler(Looper.getMainLooper()).post(command)
+                createMainThreadExecutor()
         );
+    }
+
+    private static Executor createMainThreadExecutor() {
+        final Handler mainHandler = new Handler(Looper.getMainLooper());
+        return mainHandler::post;
     }
 
     public AccountRepository(
@@ -44,7 +50,25 @@ public class AccountRepository {
     }
 
     public void insertAccount(@NonNull final AccountEntity account) {
-        executorService.execute(() -> accountDao.insertAccount(account));
+        insertAccount(account, null);
+    }
+
+    public void insertAccount(
+            @NonNull final AccountEntity account,
+            @Nullable final DataCallback<Void> callback
+    ) {
+        executorService.execute(() -> {
+            try {
+                accountDao.insertAccount(account);
+                if (callback != null) {
+                    callbackExecutor.execute(() -> callback.onSuccess(null));
+                }
+            } catch (Exception e) {
+                if (callback != null) {
+                    callbackExecutor.execute(() -> callback.onError(e));
+                }
+            }
+        });
     }
 
     public void getAccountsByUserId(

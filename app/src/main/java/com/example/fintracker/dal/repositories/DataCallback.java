@@ -1,6 +1,7 @@
 package com.example.fintracker.dal.repositories;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 /**
  * Generic callback interface for asynchronous repository data operations.
@@ -11,10 +12,11 @@ public interface DataCallback<T> {
 
     /**
      * Called when data operation completes successfully.
+     * Some DAO-backed lookups may return null when no row is found.
      *
-     * @param data The operation result
+     * @param data The operation result, nullable for "not found" lookups
      */
-    void onSuccess(T data);
+    void onSuccess(@Nullable T data);
 
     /**
      * Called when data operation fails.
@@ -23,4 +25,3 @@ public interface DataCallback<T> {
      */
     void onError(@NonNull Throwable throwable);
 }
-
