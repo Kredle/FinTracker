@@ -6,12 +6,18 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 
 import com.example.fintracker.dal.local.dao.AccountDao;
+import com.example.fintracker.dal.local.dao.LimitDao;
+import com.example.fintracker.dal.local.dao.SharedAccountMemberDao;
 import com.example.fintracker.dal.local.dao.TagDao;
 import com.example.fintracker.dal.local.dao.TransactionDao;
+import com.example.fintracker.dal.local.dao.UserDao;
 import com.example.fintracker.dal.local.database.AppDatabase;
 import com.example.fintracker.dal.local.entities.AccountEntity;
+import com.example.fintracker.dal.local.entities.LimitEntity;
+import com.example.fintracker.dal.local.entities.SharedAccountMemberEntity;
 import com.example.fintracker.dal.local.entities.TagEntity;
 import com.example.fintracker.dal.local.entities.TransactionEntity;
+import com.example.fintracker.dal.local.entities.UserEntity;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.firestore.FirebaseFirestore;
 
@@ -28,16 +34,22 @@ public class FirebaseSyncManager {
 
     private static final String TAG = "FIREBASE_SYNC";
     private final FirebaseFirestore firestore;
+    private final UserDao userDao;
     private final AccountDao accountDao;
     private final TagDao tagDao;
+    private final LimitDao limitDao;
     private final TransactionDao transactionDao;
+    private final SharedAccountMemberDao sharedAccountMemberDao;
 
     public FirebaseSyncManager(@NonNull Context context) {
         this.firestore = FirebaseFirestore.getInstance();
         AppDatabase database = AppDatabase.getInstance(context);
+        this.userDao = database.userDao();
         this.accountDao = database.accountDao();
         this.tagDao = database.tagDao();
+        this.limitDao = database.limitDao();
         this.transactionDao = database.transactionDao();
+        this.sharedAccountMemberDao = database.sharedAccountMemberDao();
     }
 
     /**
@@ -48,15 +60,61 @@ public class FirebaseSyncManager {
     public boolean syncUnsyncedDataToCloud() {
         Log.d(TAG, "Starting synchronous sync of unsynced data to cloud...");
 
+        boolean usersOk = syncUnsyncedUsers();
         boolean accountsOk = syncUnsyncedAccounts();
         boolean tagsOk = syncUnsyncedTags();
+        boolean limitsOk = syncUnsyncedLimits();
         boolean transactionsOk = syncUnsyncedTransactions();
-        boolean allSynced = accountsOk && tagsOk && transactionsOk;
+        boolean sharedMembersOk = syncUnsyncedSharedMembers();
+
+        boolean allSynced = usersOk && accountsOk && tagsOk && limitsOk && transactionsOk && sharedMembersOk;
 
         if (allSynced) {
             Log.d(TAG, "Sync process completed for all entities");
         } else {
             Log.w(TAG, "Sync completed with failures; unsynced data remains for retry");
+        }
+        return allSynced;
+    }
+
+    private boolean syncUnsyncedUsers() {
+        boolean allSynced = true;
+        try {
+            List<UserEntity> unsyncedUsers = userDao.getUnsyncedUsers();
+            Log.d(TAG, "Found " + unsyncedUsers.size() + " unsynced users");
+
+            for (UserEntity user : unsyncedUsers) {
+                try {
+                    Map<String, Object> userData = new HashMap<>();
+                    userData.put("id", user.id);
+                    userData.put("name", user.name);
+                    userData.put("email", user.email);
+                    userData.put("password", user.password);
+                    userData.put("hourlyRate", user.hourlyRate);
+                    userData.put("isBankSyncEnabled", user.isBankSyncEnabled);
+                    userData.put("isSynced", true);
+                    userData.put("isDeleted", user.isDeleted);
+                    userData.put("updatedAt", user.updatedAt);
+
+                    Tasks.await(firestore.collection("users")
+                            .document(user.id)
+                            .set(userData));
+
+                    user.isSynced = true;
+                    userDao.updateUser(user);
+                    Log.d(TAG, "User synced: " + user.name + " (ID: " + user.id + ")");
+                } catch (ExecutionException | InterruptedException e) {
+                    allSynced = false;
+                    Log.e(TAG, "Failed to sync user: " + user.name, e);
+                    if (e instanceof InterruptedException) {
+                        Thread.currentThread().interrupt();
+                        return false;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error fetching unsynced users", e);
+            return false;
         }
         return allSynced;
     }
@@ -183,6 +241,88 @@ public class FirebaseSyncManager {
             }
         } catch (Exception e) {
             Log.e(TAG, "Error fetching unsynced transactions", e);
+            return false;
+        }
+        return allSynced;
+    }
+
+    private boolean syncUnsyncedLimits() {
+        boolean allSynced = true;
+        try {
+            List<LimitEntity> unsyncedLimits = limitDao.getUnsyncedLimits();
+            Log.d(TAG, "Found " + unsyncedLimits.size() + " unsynced limits");
+
+            for (LimitEntity limit : unsyncedLimits) {
+                try {
+                    Map<String, Object> limitData = new HashMap<>();
+                    limitData.put("id", limit.id);
+                    limitData.put("accountId", limit.accountId);
+                    limitData.put("userId", limit.userId);
+                    limitData.put("tagId", limit.tagId);
+                    limitData.put("amountLimit", limit.amountLimit);
+                    limitData.put("period", limit.period);
+                    limitData.put("isSynced", true);
+                    limitData.put("isDeleted", limit.isDeleted);
+                    limitData.put("updatedAt", limit.updatedAt);
+
+                    Tasks.await(firestore.collection("limits")
+                            .document(limit.id)
+                            .set(limitData));
+
+                    limit.isSynced = true;
+                    limitDao.updateLimit(limit);
+                    Log.d(TAG, "Limit synced: " + limit.period + " limit (ID: " + limit.id + ")");
+                } catch (ExecutionException | InterruptedException e) {
+                    allSynced = false;
+                    Log.e(TAG, "Failed to sync limit: " + limit.id, e);
+                    if (e instanceof InterruptedException) {
+                        Thread.currentThread().interrupt();
+                        return false;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error fetching unsynced limits", e);
+            return false;
+        }
+        return allSynced;
+    }
+
+    private boolean syncUnsyncedSharedMembers() {
+        boolean allSynced = true;
+        try {
+            List<SharedAccountMemberEntity> unsyncedSharedMembers = sharedAccountMemberDao.getUnsyncedSharedMembers();
+            Log.d(TAG, "Found " + unsyncedSharedMembers.size() + " unsynced shared members");
+
+            for (SharedAccountMemberEntity member : unsyncedSharedMembers) {
+                try {
+                    Map<String, Object> memberData = new HashMap<>();
+                    memberData.put("id", member.id);
+                    memberData.put("accountId", member.accountId);
+                    memberData.put("userId", member.userId);
+                    memberData.put("role", member.role);
+                    memberData.put("isSynced", true);
+                    memberData.put("isDeleted", member.isDeleted);
+                    memberData.put("updatedAt", member.updatedAt);
+
+                    Tasks.await(firestore.collection("shared_members")
+                            .document(member.id)
+                            .set(memberData));
+
+                    member.isSynced = true;
+                    sharedAccountMemberDao.updateSharedAccountMember(member);
+                    Log.d(TAG, "Shared member synced: " + member.role + " (ID: " + member.id + ")");
+                } catch (ExecutionException | InterruptedException e) {
+                    allSynced = false;
+                    Log.e(TAG, "Failed to sync shared member: " + member.id, e);
+                    if (e instanceof InterruptedException) {
+                        Thread.currentThread().interrupt();
+                        return false;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error fetching unsynced shared members", e);
             return false;
         }
         return allSynced;

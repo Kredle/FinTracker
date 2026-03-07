@@ -7,9 +7,13 @@ import androidx.annotation.NonNull;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+
 /**
  * FirebaseSyncWorker handles background synchronization of unsynced data to Firestore.
  * Triggered automatically by WorkManager when network connectivity is available.
+ * Only runs sync when a user is authenticated to avoid unnecessary retries.
  */
 public class FirebaseSyncWorker extends Worker {
 
@@ -23,6 +27,13 @@ public class FirebaseSyncWorker extends Worker {
     @Override
     public Result doWork() {
         Log.d(TAG, "FirebaseSyncWorker started");
+
+        // Check if user is authenticated before attempting sync
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null) {
+            Log.d(TAG, "No authenticated user, skipping sync");
+            return Result.success(); // Return success to avoid retries when no user is logged in
+        }
 
         try {
             FirebaseSyncManager syncManager = new FirebaseSyncManager(getApplicationContext());

@@ -5,6 +5,7 @@ import androidx.annotation.Nullable;
 import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.Query;
+import androidx.room.Update;
 
 import com.example.fintracker.dal.local.entities.SharedAccountMemberEntity;
 
@@ -14,7 +15,8 @@ import java.util.List;
  * Data Access Object (DAO) for SharedAccountMember entity.
  * Provides database operations for shared account membership management including adding members,
  * retrieving members, updating roles, and removing members (soft-delete).
- * All queries filter out soft-deleted members (isDeleted = 0).
+ * All queries filter out soft-deleted members (isDeleted = 0), except sync queries which include
+ * soft-deleted rows to propagate deletions to the cloud.
  */
 @Dao
 public interface SharedAccountMemberDao {
@@ -74,4 +76,22 @@ public interface SharedAccountMemberDao {
      */
     @Query("UPDATE shared_account_members SET isDeleted = 1 WHERE accountId = :accountId AND userId = :userId AND isDeleted = 0")
     int removeMember(@NonNull String accountId, @NonNull String userId);
+
+    /**
+     * Retrieves all unsynced shared account members (isSynced = false).
+     * Used for Firebase synchronization.
+     *
+     * @return List of unsynced SharedAccountMemberEntity objects
+     */
+    @Query("SELECT * FROM shared_account_members WHERE isSynced = 0")
+    List<SharedAccountMemberEntity> getUnsyncedSharedMembers();
+
+    /**
+     * Updates an existing shared account member entity.
+     * Used to mark members as synced after Firebase upload.
+     *
+     * @param member The SharedAccountMemberEntity to update
+     */
+    @Update
+    void updateSharedAccountMember(@NonNull SharedAccountMemberEntity member);
 }

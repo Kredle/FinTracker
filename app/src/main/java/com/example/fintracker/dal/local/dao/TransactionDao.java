@@ -13,7 +13,8 @@ import java.util.List;
 /**
  * Data Access Object (DAO) for Transaction entity.
  * Provides database operations for transaction management including insertion, retrieval, search, and soft-deletion.
- * All queries filter out soft-deleted transactions (isDeleted = 0).
+ * All queries filter out soft-deleted transactions (isDeleted = 0), except sync queries which include
+ * soft-deleted rows to propagate deletions to the cloud.
  */
 @Dao
 public interface TransactionDao {

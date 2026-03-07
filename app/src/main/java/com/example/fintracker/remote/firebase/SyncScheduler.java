@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * SyncScheduler manages scheduling of Firebase sync operations via WorkManager.
- * Ensures sync only occurs when network connectivity is available.
+ * Ensures sync only occurs when network connectivity is available (WiFi or cellular).
  */
 public class SyncScheduler {
 
@@ -24,14 +24,16 @@ public class SyncScheduler {
     /**
      * Schedules periodic Firebase sync.
      * WorkManager enforces a minimum 15-minute interval for periodic work.
+     * Sync will run on any available network connection (WiFi or cellular).
+     * To restrict to WiFi-only, change NetworkType.CONNECTED to NetworkType.UNMETERED.
      *
      * @param context Application or Activity context
      */
     public static void scheduleSync(@NonNull Context context) {
-        Log.d(TAG, "Scheduling periodic Firebase sync with network constraints");
+        Log.d(TAG, "Scheduling periodic Firebase sync (WiFi or cellular)");
 
         Constraints constraints = new Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .setRequiredNetworkType(NetworkType.CONNECTED) // Allows WiFi or cellular
                 .build();
 
         PeriodicWorkRequest syncWorkRequest =

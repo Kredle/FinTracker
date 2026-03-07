@@ -5,6 +5,7 @@ import androidx.annotation.Nullable;
 import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.Query;
+import androidx.room.Update;
 
 import com.example.fintracker.dal.local.entities.LimitEntity;
 
@@ -13,7 +14,8 @@ import java.util.List;
 /**
  * Data Access Object (DAO) for Limit entity.
  * Provides database operations for spending limit management including insertion and retrieval.
- * All queries filter out soft-deleted limits (isDeleted = 0).
+ * All queries filter out soft-deleted limits (isDeleted = 0), except sync queries which include
+ * soft-deleted rows to propagate deletions to the cloud.
  *
  * Note: The current implementation allows multiple active limits per (accountId, tagId) pair.
  * If business rules require uniqueness, consider adding a UNIQUE constraint at the schema level.
@@ -65,5 +67,22 @@ public interface LimitDao {
     @Query("SELECT * FROM limits WHERE accountId = :accountId AND tagId = :tagId AND isDeleted = 0 ORDER BY updatedAt DESC LIMIT 1")
     @Nullable
     LimitEntity getLimitByAccountAndTag(@NonNull String accountId, @NonNull String tagId);
-}
 
+    /**
+     * Retrieves all unsynced limits (isSynced = false).
+     * Used for Firebase synchronization.
+     *
+     * @return List of unsynced LimitEntity objects
+     */
+    @Query("SELECT * FROM limits WHERE isSynced = 0")
+    List<LimitEntity> getUnsyncedLimits();
+
+    /**
+     * Updates an existing limit entity.
+     * Used to mark limits as synced after Firebase upload.
+     *
+     * @param limit The LimitEntity to update
+     */
+    @Update
+    void updateLimit(@NonNull LimitEntity limit);
+}
