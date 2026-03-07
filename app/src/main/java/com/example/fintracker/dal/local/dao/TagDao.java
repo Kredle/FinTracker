@@ -36,7 +36,7 @@ public interface TagDao {
      * Used to display a user's custom expense tags in the UI.
      *
      * @param ownerId The owner's user ID (UUID)
-     * @return List of TagEntity objects owned by the user, empty list if none exist
+     * @return LiveData that emits a list of TagEntity objects owned by the user; emits an empty list if none exist
      */
     @Query("SELECT * FROM tags WHERE ownerId = :ownerId AND isDeleted = 0 ORDER BY name ASC")
     LiveData<List<TagEntity>> getTagsByUserId(@NonNull String ownerId);
@@ -49,7 +49,7 @@ public interface TagDao {
      * Default tags have ownerId = null or ownerId = '' (empty string) and are available to all users.
      * Typically includes predefined categories like "Food", "Transport", "Entertainment", etc.
      *
-     * @return List of default TagEntity objects
+     * @return LiveData that emits a list of default TagEntity objects
      */
     @Query("SELECT * FROM tags WHERE (ownerId IS NULL OR ownerId = '') AND isDeleted = 0 ORDER BY name ASC")
     LiveData<List<TagEntity>> getDefaultTags();
@@ -62,10 +62,10 @@ public interface TagDao {
      * Useful for loading tag details or validation.
      *
      * @param tagId The tag's unique identifier (UUID)
-     * @return TagEntity if found, null otherwise
+     * @return LiveData that emits the TagEntity if found, or null if the tag doesn't exist
      */
     @Query("SELECT * FROM tags WHERE id = :tagId AND isDeleted = 0 LIMIT 1")
-    LiveData<TagEntity> getTagById(@NonNull String tagId);
+    LiveData<@Nullable TagEntity> getTagById(@NonNull String tagId);
 
     @Query("SELECT * FROM tags WHERE id = :tagId AND isDeleted = 0 LIMIT 1")
     @Nullable
@@ -77,10 +77,10 @@ public interface TagDao {
      *
      * @param name The tag name
      * @param ownerId The owner's user ID
-     * @return TagEntity if found, null otherwise
+     * @return LiveData that emits the TagEntity if found, or null if the tag doesn't exist
      */
     @Query("SELECT * FROM tags WHERE name = :name AND ownerId = :ownerId AND isDeleted = 0 LIMIT 1")
-    LiveData<TagEntity> getTagByNameAndOwner(@NonNull String name, @NonNull String ownerId);
+    LiveData<@Nullable TagEntity> getTagByNameAndOwner(@NonNull String name, @NonNull String ownerId);
 
     @Query("SELECT * FROM tags WHERE name = :name AND ownerId = :ownerId AND isDeleted = 0 LIMIT 1")
     @Nullable
@@ -91,7 +91,7 @@ public interface TagDao {
      * Combines tags owned by the user with system default tags.
      *
      * @param ownerId The user's ID
-     * @return List of TagEntity objects (user tags + default tags)
+     * @return LiveData that emits a list of TagEntity objects (user tags + default tags)
      */
     @Query("SELECT * FROM tags WHERE (ownerId = :ownerId OR ownerId IS NULL OR ownerId = '') AND isDeleted = 0 ORDER BY name ASC")
     LiveData<List<TagEntity>> getAllAvailableTags(@NonNull String ownerId);

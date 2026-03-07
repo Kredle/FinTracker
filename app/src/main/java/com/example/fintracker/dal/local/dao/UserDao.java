@@ -57,20 +57,20 @@ public interface UserDao {
      * Useful for profile lookups and session management.
      *
      * @param userId The user's unique identifier
-     * @return UserEntity if found, null otherwise
+     * @return LiveData that emits the UserEntity if found, or null if the user doesn't exist
      */
     @Query("SELECT * FROM users WHERE id = :userId LIMIT 1")
-    LiveData<UserEntity> getUserById(@NonNull String userId);
+    LiveData<@Nullable UserEntity> getUserById(@NonNull String userId);
 
     /**
      * Retrieves a user by email address.
      * Useful for email-based lookups.
      *
      * @param email The email address to search for
-     * @return UserEntity if found, null otherwise
+     * @return LiveData that emits the UserEntity if found, or null if the user doesn't exist
      */
     @Query("SELECT * FROM users WHERE email = :email LIMIT 1")
-    LiveData<UserEntity> getUserByEmail(@NonNull String email);
+    LiveData<@Nullable UserEntity> getUserByEmail(@NonNull String email);
 
     /**
      * Retrieves all unsynced users (isSynced = false).
