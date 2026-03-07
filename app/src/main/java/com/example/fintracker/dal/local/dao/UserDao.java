@@ -29,7 +29,7 @@ public interface UserDao {
      * Used for login functionality - user can login with either email or username.
      *
      * @param login Email or username (username is stored in 'name' field)
-     * @param password The user's password
+     * @param password The user's password hashed
      * @return UserEntity if found, null otherwise
      */
     @Query("SELECT * FROM users WHERE (email = :login OR name = :login) AND password = :password LIMIT 1")
