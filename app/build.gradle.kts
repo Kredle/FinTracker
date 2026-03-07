@@ -50,6 +50,7 @@ dependencies {
     implementation(libs.room.common.jvm)
     implementation(libs.room.runtime)
     testImplementation(libs.junit)
+    testImplementation("org.mockito:mockito-core:5.22.0")
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
     annotationProcessor(libs.room.compiler)
