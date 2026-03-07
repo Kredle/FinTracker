@@ -65,7 +65,7 @@ public interface TagDao {
      * @return LiveData that emits the TagEntity if found, or null if the tag doesn't exist
      */
     @Query("SELECT * FROM tags WHERE id = :tagId AND isDeleted = 0 LIMIT 1")
-    LiveData<@Nullable TagEntity> getTagById(@NonNull String tagId);
+    LiveData<TagEntity> getTagById(@NonNull String tagId);
 
     @Query("SELECT * FROM tags WHERE id = :tagId AND isDeleted = 0 LIMIT 1")
     @Nullable
@@ -80,7 +80,7 @@ public interface TagDao {
      * @return LiveData that emits the TagEntity if found, or null if the tag doesn't exist
      */
     @Query("SELECT * FROM tags WHERE name = :name AND ownerId = :ownerId AND isDeleted = 0 LIMIT 1")
-    LiveData<@Nullable TagEntity> getTagByNameAndOwner(@NonNull String name, @NonNull String ownerId);
+    LiveData<TagEntity> getTagByNameAndOwner(@NonNull String name, @NonNull String ownerId);
 
     @Query("SELECT * FROM tags WHERE name = :name AND ownerId = :ownerId AND isDeleted = 0 LIMIT 1")
     @Nullable

@@ -80,7 +80,7 @@ public class SharedAccountMemberRepository {
         return sharedAccountMemberDao.getMembersForAccount(accountId);
     }
 
-    public LiveData<@Nullable SharedAccountMemberEntity> getMember(@NonNull String accountId, @NonNull String userId) {
+    public LiveData<SharedAccountMemberEntity> getMember(@NonNull String accountId, @NonNull String userId) {
         return sharedAccountMemberDao.getMember(accountId, userId);
     }
 

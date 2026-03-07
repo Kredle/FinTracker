@@ -55,7 +55,7 @@ public interface LimitDao {
      * @return LiveData that emits the LimitEntity if an account-wide limit exists, or null otherwise
      */
     @Query("SELECT * FROM limits WHERE accountId = :accountId AND tagId IS NULL AND isDeleted = 0 ORDER BY updatedAt DESC LIMIT 1")
-    LiveData<@Nullable LimitEntity> getAccountWideLimitByAccountId(@NonNull String accountId);
+    LiveData<LimitEntity> getAccountWideLimitByAccountId(@NonNull String accountId);
 
     @Query("SELECT * FROM limits WHERE accountId = :accountId AND tagId IS NULL AND isDeleted = 0 ORDER BY updatedAt DESC LIMIT 1")
     @Nullable
@@ -72,7 +72,7 @@ public interface LimitDao {
      * @return LiveData that emits the LimitEntity if found, or null otherwise
      */
     @Query("SELECT * FROM limits WHERE accountId = :accountId AND tagId = :tagId AND isDeleted = 0 ORDER BY updatedAt DESC LIMIT 1")
-    LiveData<@Nullable LimitEntity> getLimitByAccountAndTag(@NonNull String accountId, @NonNull String tagId);
+    LiveData<LimitEntity> getLimitByAccountAndTag(@NonNull String accountId, @NonNull String tagId);
 
     @Query("SELECT * FROM limits WHERE accountId = :accountId AND tagId = :tagId AND isDeleted = 0 ORDER BY updatedAt DESC LIMIT 1")
     @Nullable

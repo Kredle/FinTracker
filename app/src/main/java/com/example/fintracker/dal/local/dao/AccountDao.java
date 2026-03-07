@@ -51,7 +51,7 @@ public interface AccountDao {
      * @return LiveData that emits the AccountEntity if found, or null if the account doesn't exist
      */
     @Query("SELECT * FROM accounts WHERE id = :accountId AND isDeleted = 0 LIMIT 1")
-    LiveData<@Nullable AccountEntity> getAccountById(@NonNull String accountId);
+    LiveData<AccountEntity> getAccountById(@NonNull String accountId);
 
     @Query("SELECT * FROM accounts WHERE id = :accountId AND isDeleted = 0 LIMIT 1")
     @Nullable
@@ -66,7 +66,7 @@ public interface AccountDao {
      * @return LiveData that emits the AccountEntity if found, or null if the account doesn't exist
      */
     @Query("SELECT * FROM accounts WHERE name = :name AND ownerId = :ownerId AND isDeleted = 0 LIMIT 1")
-    LiveData<@Nullable AccountEntity> getAccountByNameAndOwner(@NonNull String name, @NonNull String ownerId);
+    LiveData<AccountEntity> getAccountByNameAndOwner(@NonNull String name, @NonNull String ownerId);
 
     @Query("SELECT * FROM accounts WHERE name = :name AND ownerId = :ownerId AND isDeleted = 0 LIMIT 1")
     @Nullable

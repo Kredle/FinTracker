@@ -80,11 +80,11 @@ public class LimitRepository {
         return limitDao.getLimitsByAccountId(accountId);
     }
 
-    public LiveData<@Nullable LimitEntity> getAccountWideLimitByAccountId(@NonNull String accountId) {
+    public LiveData<LimitEntity> getAccountWideLimitByAccountId(@NonNull String accountId) {
         return limitDao.getAccountWideLimitByAccountId(accountId);
     }
 
-    public LiveData<@Nullable LimitEntity> getLimitByAccountAndTag(@NonNull String accountId, @NonNull String tagId) {
+    public LiveData<LimitEntity> getLimitByAccountAndTag(@NonNull String accountId, @NonNull String tagId) {
         return limitDao.getLimitByAccountAndTag(accountId, tagId);
     }
 
