@@ -1,8 +1,6 @@
 package com.example.fintracker.dal.repositories;
 
 import android.app.Application;
-import android.os.Handler;
-import android.os.Looper;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -14,7 +12,6 @@ import com.example.fintracker.dal.local.entities.LimitEntity;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * Repository layer for limit-related local database operations.
@@ -25,18 +22,15 @@ public class LimitRepository {
     private final LimitDao limitDao;
     private final ExecutorService executorService;
     private final Executor callbackExecutor;
+    private final boolean ownsExecutor;
 
     public LimitRepository(@NonNull Application application) {
         this(
                 AppDatabase.getInstance(application).limitDao(),
-                Executors.newSingleThreadExecutor(),
-                createMainThreadExecutor()
+                RepositoryExecutors.db(),
+                RepositoryExecutors.mainThread(),
+                false
         );
-    }
-
-    private static Executor createMainThreadExecutor() {
-        final Handler mainHandler = new Handler(Looper.getMainLooper());
-        return mainHandler::post;
     }
 
     public LimitRepository(
@@ -44,9 +38,19 @@ public class LimitRepository {
             @NonNull ExecutorService executorService,
             @NonNull Executor callbackExecutor
     ) {
+        this(limitDao, executorService, callbackExecutor, true);
+    }
+
+    private LimitRepository(
+            @NonNull LimitDao limitDao,
+            @NonNull ExecutorService executorService,
+            @NonNull Executor callbackExecutor,
+            boolean ownsExecutor
+    ) {
         this.limitDao = limitDao;
         this.executorService = executorService;
         this.callbackExecutor = callbackExecutor;
+        this.ownsExecutor = ownsExecutor;
     }
 
     public void insertLimit(@NonNull final LimitEntity limit) {
@@ -115,7 +119,8 @@ public class LimitRepository {
     }
 
     public void shutdown() {
-        executorService.shutdown();
+        if (ownsExecutor) {
+            executorService.shutdown();
+        }
     }
 }
-

@@ -15,6 +15,7 @@ import java.util.List;
 /**
  * Data Access Object (DAO) for Account entity.
  * Provides database operations for account management including creation, retrieval, updates, and deletion.
+ * Sync queries include soft-deleted accounts to propagate deletions to the cloud.
  */
 @Dao
 public interface AccountDao {

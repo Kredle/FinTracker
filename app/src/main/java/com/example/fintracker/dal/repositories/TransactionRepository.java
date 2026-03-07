@@ -1,8 +1,6 @@
 package com.example.fintracker.dal.repositories;
 
 import android.app.Application;
-import android.os.Handler;
-import android.os.Looper;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -14,7 +12,6 @@ import com.example.fintracker.dal.local.entities.TransactionEntity;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * Repository layer for transaction-related local database operations.
@@ -25,18 +22,15 @@ public class TransactionRepository {
     private final TransactionDao transactionDao;
     private final ExecutorService executorService;
     private final Executor callbackExecutor;
+    private final boolean ownsExecutor;
 
     public TransactionRepository(@NonNull Application application) {
         this(
                 AppDatabase.getInstance(application).transactionDao(),
-                Executors.newSingleThreadExecutor(),
-                createMainThreadExecutor()
+                RepositoryExecutors.db(),
+                RepositoryExecutors.mainThread(),
+                false
         );
-    }
-
-    private static Executor createMainThreadExecutor() {
-        final Handler mainHandler = new Handler(Looper.getMainLooper());
-        return mainHandler::post;
     }
 
     public TransactionRepository(
@@ -44,9 +38,19 @@ public class TransactionRepository {
             @NonNull ExecutorService executorService,
             @NonNull Executor callbackExecutor
     ) {
+        this(transactionDao, executorService, callbackExecutor, true);
+    }
+
+    private TransactionRepository(
+            @NonNull TransactionDao transactionDao,
+            @NonNull ExecutorService executorService,
+            @NonNull Executor callbackExecutor,
+            boolean ownsExecutor
+    ) {
         this.transactionDao = transactionDao;
         this.executorService = executorService;
         this.callbackExecutor = callbackExecutor;
+        this.ownsExecutor = ownsExecutor;
     }
 
     public void insertTransaction(@NonNull final TransactionEntity transaction) {
@@ -123,6 +127,8 @@ public class TransactionRepository {
     }
 
     public void shutdown() {
-        executorService.shutdown();
+        if (ownsExecutor) {
+            executorService.shutdown();
+        }
     }
 }

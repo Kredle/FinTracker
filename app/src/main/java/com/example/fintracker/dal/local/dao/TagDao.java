@@ -16,6 +16,7 @@ import java.util.List;
  * Data Access Object (DAO) for Tag entity.
  * Provides database operations for tag management including creation, retrieval, updates, and deletion.
  * Tags can be user-created or system default tags (where ownerId is null).
+ * Sync queries include soft-deleted tags to propagate deletions to the cloud.
  */
 @Dao
 public interface TagDao {

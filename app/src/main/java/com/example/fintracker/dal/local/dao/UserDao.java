@@ -5,12 +5,16 @@ import androidx.annotation.Nullable;
 import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.Query;
+import androidx.room.Update;
 
 import com.example.fintracker.dal.local.entities.UserEntity;
+
+import java.util.List;
 
 /**
  * Data Access Object (DAO) for User entity.
  * Provides database operations for user registration, login, and existence checks.
+ * Sync queries include soft-deleted users to propagate deletions to the cloud.
  */
 @Dao
 public interface UserDao {
@@ -68,5 +72,23 @@ public interface UserDao {
     @Query("SELECT * FROM users WHERE email = :email LIMIT 1")
     @Nullable
     UserEntity getUserByEmail(@NonNull String email);
+
+    /**
+     * Retrieves all unsynced users (isSynced = false).
+     * Used for Firebase synchronization.
+     *
+     * @return List of unsynced UserEntity objects
+     */
+    @Query("SELECT * FROM users WHERE isSynced = 0")
+    List<UserEntity> getUnsyncedUsers();
+
+    /**
+     * Updates an existing user entity.
+     * Used to mark users as synced after Firebase upload.
+     *
+     * @param user The UserEntity to update
+     */
+    @Update
+    void updateUser(@NonNull UserEntity user);
 }
 
