@@ -39,16 +39,16 @@ public interface SharedAccountMemberDao {
     List<SharedAccountMemberEntity> getMembersForAccount(@NonNull String accountId);
 
     /**
-     * Retrieves a specific member by account and user.
-     * Used to check if a user has access to an account and what their role is (ADMIN or USER).
+     * Retrieves a specific active membership by account and user.
+     * Used to check whether a user currently has access and what role they hold.
      *
      * @param accountId The account's unique identifier (UUID)
      * @param userId The user's unique identifier (UUID)
-     * @return SharedAccountMemberEntity if found, null if user is not a member or has been removed
+     * @return SharedAccountMemberEntity if found, null if user is not an active member
      */
     @Query("SELECT * FROM shared_account_members WHERE accountId = :accountId AND userId = :userId AND isDeleted = 0 LIMIT 1")
     @Nullable
-    SharedAccountMemberEntity getMemberRole(@NonNull String accountId, @NonNull String userId);
+    SharedAccountMemberEntity getMember(@NonNull String accountId, @NonNull String userId);
 
     /**
      * Updates the role of a specific member in a shared account.
@@ -64,15 +64,14 @@ public interface SharedAccountMemberDao {
     int updateMemberRole(@NonNull String accountId, @NonNull String userId, @NonNull String newRole);
 
     /**
-     * Soft-deletes a member from a shared account by setting isDeleted flag to true.
+     * Soft-deletes an active member from a shared account by setting isDeleted flag to true.
      * This preserves data for sync operations while removing the user's access.
      * Used when an ADMIN removes a user from the shared account.
      *
      * @param accountId The account's unique identifier (UUID)
      * @param userId The user's unique identifier (UUID)
-     * @return The number of rows affected (0 if member doesn't exist, 1 if soft-deleted)
+     * @return The number of rows affected (0 if member doesn't exist or is already deleted, 1 if soft-deleted)
      */
-    @Query("UPDATE shared_account_members SET isDeleted = 1 WHERE accountId = :accountId AND userId = :userId")
+    @Query("UPDATE shared_account_members SET isDeleted = 1 WHERE accountId = :accountId AND userId = :userId AND isDeleted = 0")
     int removeMember(@NonNull String accountId, @NonNull String userId);
 }
-

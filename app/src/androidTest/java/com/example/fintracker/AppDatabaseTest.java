@@ -952,7 +952,7 @@ public class AppDatabaseTest {
         sharedAccountMemberDao.addMember(member);
 
         // Retrieve the member to verify
-        SharedAccountMemberEntity retrieved = sharedAccountMemberDao.getMemberRole(accountId, userId2);
+        SharedAccountMemberEntity retrieved = sharedAccountMemberDao.getMember(accountId, userId2);
         assertNotNull(retrieved);
         assertEquals(member.id, retrieved.id);
         assertEquals("ADMIN", retrieved.role);
@@ -1025,7 +1025,7 @@ public class AppDatabaseTest {
         sharedAccountMemberDao.addMember(member);
 
         // Verify initial role
-        SharedAccountMemberEntity initialMember = sharedAccountMemberDao.getMemberRole(accountId, memberId);
+        SharedAccountMemberEntity initialMember = sharedAccountMemberDao.getMember(accountId, memberId);
         assertNotNull(initialMember);
         assertEquals("USER", initialMember.role);
 
@@ -1037,7 +1037,7 @@ public class AppDatabaseTest {
         assertEquals(1, rowsAffected);
 
         // Verify update
-        SharedAccountMemberEntity updatedMember = sharedAccountMemberDao.getMemberRole(accountId, memberId);
+        SharedAccountMemberEntity updatedMember = sharedAccountMemberDao.getMember(accountId, memberId);
         assertNotNull(updatedMember);
         assertEquals("ADMIN", updatedMember.role);
     }
@@ -1062,15 +1062,19 @@ public class AppDatabaseTest {
         sharedAccountMemberDao.addMember(member);
 
         // Verify member exists
-        SharedAccountMemberEntity existingMember = sharedAccountMemberDao.getMemberRole(accountId, memberId);
+        SharedAccountMemberEntity existingMember = sharedAccountMemberDao.getMember(accountId, memberId);
         assertNotNull(existingMember);
 
         // Remove member (soft delete)
         int rowsAffected = sharedAccountMemberDao.removeMember(accountId, memberId);
         assertEquals(1, rowsAffected);
 
-        // Verify member is no longer accessible via getMemberRole (filters isDeleted = 0)
-        SharedAccountMemberEntity removedMember = sharedAccountMemberDao.getMemberRole(accountId, memberId);
+        // A second removal should be idempotent and affect no rows.
+        int rowsAffectedSecondRemove = sharedAccountMemberDao.removeMember(accountId, memberId);
+        assertEquals(0, rowsAffectedSecondRemove);
+
+        // Verify member is no longer accessible via getMember (filters isDeleted = 0)
+        SharedAccountMemberEntity removedMember = sharedAccountMemberDao.getMember(accountId, memberId);
         assertNull(removedMember);
 
         // Verify member is not in the members list
@@ -1103,7 +1107,7 @@ public class AppDatabaseTest {
         assertEquals(0, rowsAffected); // Should not update deleted member
 
         // Verify member is still deleted (not accessible)
-        SharedAccountMemberEntity deletedMember = sharedAccountMemberDao.getMemberRole(accountId, memberId);
+        SharedAccountMemberEntity deletedMember = sharedAccountMemberDao.getMember(accountId, memberId);
         assertNull(deletedMember);
     }
 }
