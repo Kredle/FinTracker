@@ -122,6 +122,16 @@ public interface AccountDao {
     LiveData<List<AccountEntity>> getAllAccountsByUserIdIncludingDeleted(@NonNull String ownerId);
 
     /**
+     * Synchronously retrieves all accounts for a user, including deleted ones.
+     * Intended for tests and background jobs that require direct List access instead of LiveData.
+     *
+     * @param ownerId The owner's user ID
+     * @return List of all AccountEntity objects for the user (including soft-deleted)
+     */
+    @Query("SELECT * FROM accounts WHERE ownerId = :ownerId")
+    List<AccountEntity> getAllAccountsByUserIdIncludingDeletedSync(@NonNull String ownerId);
+
+    /**
      * Retrieves all accounts that need to be synced.
      * Accounts with isSynced = false are candidates for cloud sync.
      *

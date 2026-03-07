@@ -80,11 +80,11 @@ public class AccountRepository {
         return accountDao.getAccountsByUserId(ownerId);
     }
 
-    public LiveData<AccountEntity> getAccountById(@NonNull String accountId) {
+    public LiveData<@Nullable AccountEntity> getAccountById(@NonNull String accountId) {
         return accountDao.getAccountById(accountId);
     }
 
-    public LiveData<AccountEntity> getAccountByNameAndOwner(@NonNull String name, @NonNull String ownerId) {
+    public LiveData<@Nullable AccountEntity> getAccountByNameAndOwner(@NonNull String name, @NonNull String ownerId) {
         return accountDao.getAccountByNameAndOwner(name, ownerId);
     }
 

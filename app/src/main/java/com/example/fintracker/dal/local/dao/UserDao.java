@@ -63,6 +63,17 @@ public interface UserDao {
     LiveData<@Nullable UserEntity> getUserById(@NonNull String userId);
 
     /**
+     * Retrieves a user by their ID (UUID) synchronously.
+     * Useful for profile lookups and session management when LiveData is not required.
+     *
+     * @param userId The user's unique identifier
+     * @return UserEntity if found, null otherwise
+     */
+    @Query("SELECT * FROM users WHERE id = :userId LIMIT 1")
+    @Nullable
+    UserEntity getUserByIdSync(@NonNull String userId);
+
+    /**
      * Retrieves a user by email address.
      * Useful for email-based lookups.
      *
@@ -71,6 +82,17 @@ public interface UserDao {
      */
     @Query("SELECT * FROM users WHERE email = :email LIMIT 1")
     LiveData<@Nullable UserEntity> getUserByEmail(@NonNull String email);
+
+    /**
+     * Retrieves a user by email address synchronously.
+     * Useful for email-based lookups when LiveData is not required.
+     *
+     * @param email The email address to search for
+     * @return UserEntity if found, null otherwise
+     */
+    @Query("SELECT * FROM users WHERE email = :email LIMIT 1")
+    @Nullable
+    UserEntity getUserByEmailSync(@NonNull String email);
 
     /**
      * Retrieves all unsynced users (isSynced = false).
