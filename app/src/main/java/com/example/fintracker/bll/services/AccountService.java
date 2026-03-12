@@ -10,6 +10,7 @@ import com.example.fintracker.bll.session.SessionManager;
 import com.example.fintracker.bll.validators.AccountValidator;
 import com.example.fintracker.dal.local.database.AppDatabase;
 import com.example.fintracker.dal.local.entities.AccountEntity;
+import com.example.fintracker.dal.local.entities.TransactionEntity;
 import com.example.fintracker.dal.repositories.AccountRepository;
 import com.example.fintracker.dal.repositories.DataCallback;
 
@@ -33,17 +34,15 @@ import java.util.concurrent.Executors;
  *
  *   // Создать счёт:
  *   accountService.createAccount("Карта", 0.0, result -> {
- *       if (result.isSuccess()) {
- *           AccountEntity acc = result.getAccount();
- *       } else {
- *           showError(result.getErrorMessage());
- *       }
+ *       if (result.isSuccess()) { AccountEntity acc = result.getAccount(); }
+ *       else { showError(result.getErrorMessage()); }
  *   });
  *
  *   // Переименовать счёт:
- *   accountService.renameAccount(accountId, "Новое название", result -> {
- *       if (result.isSuccess()) { ... }
- *   });
+ *   accountService.renameAccount(accountId, "Новое название", result -> { ... });
+ *
+ *   // Удалить счёт вместе со всеми его транзакциями:
+ *   accountService.deleteAccount(accountId, result -> { ... });
  *
  *   // Получить все счета текущего пользователя (LiveData):
  *   accountService.getMyAccounts().observe(this, accounts -> { ... });
@@ -92,7 +91,6 @@ public class AccountService {
             double initialBalance,
             @NonNull AccountCallback callback
     ) {
-        // Проверяем сессию до запуска фона — быстрый сброс без лишнего потока
         String ownerId;
         try {
             ownerId = SessionManager.getInstance().requireUserId();
@@ -104,7 +102,6 @@ public class AccountService {
         final String ownerIdFinal = ownerId;
 
         executorService.execute(() -> {
-            // Валидация
             try {
                 AccountValidator.validateAccountCreation(name.trim(), initialBalance);
             } catch (IllegalArgumentException e) {
@@ -173,7 +170,6 @@ public class AccountService {
         final String currentUserIdFinal = currentUserId;
 
         executorService.execute(() -> {
-            // Валидация нового названия
             try {
                 AccountValidator.isValidAccountName(newName.trim());
             } catch (IllegalArgumentException e) {
@@ -181,14 +177,12 @@ public class AccountService {
                 return;
             }
 
-            // Получаем счёт синхронно
             AccountEntity account = database.accountDao().getAccountByIdSync(accountId);
             if (account == null) {
                 deliverFailure(callback, "Счёт не найден");
                 return;
             }
 
-            // Проверяем, что текущий пользователь — владелец
             if (!currentUserIdFinal.equals(account.ownerId)) {
                 deliverFailure(callback, "Нет прав для переименования этого счёта");
                 return;
@@ -212,6 +206,69 @@ public class AccountService {
     }
 
     // ─────────────────────────────────────────────────────────────
+    //  УДАЛЕНИЕ СЧЁТА
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Удаляет обычный (не совместный) счёт и все связанные с ним транзакции.
+     * Используется soft-delete: данные помечаются как удалённые (isDeleted = true)
+     * и isSynced = false, чтобы WorkManager распространил удаление в Firebase.
+     *
+     * Только владелец счёта может его удалить.
+     * Совместные счета (isShared == true) удалять этим методом нельзя —
+     * используй SharedAccountService.deleteSharedAccount().
+     *
+     * @param accountId ID счёта (UUID)
+     * @param callback  Результат операции
+     */
+    public void deleteAccount(
+            @NonNull String accountId,
+            @NonNull AccountCallback callback
+    ) {
+        String currentUserId;
+        try {
+            currentUserId = SessionManager.getInstance().requireUserId();
+        } catch (IllegalStateException e) {
+            deliverFailure(callback, "Необходимо войти в аккаунт");
+            return;
+        }
+
+        final String currentUserIdFinal = currentUserId;
+
+        executorService.execute(() -> {
+            AccountEntity account = database.accountDao().getAccountByIdSync(accountId);
+            if (account == null) {
+                deliverFailure(callback, "Счёт не найден");
+                return;
+            }
+
+            if (account.isShared) {
+                deliverFailure(callback,
+                        "Это совместный счёт. Используйте SharedAccountService.deleteSharedAccount()");
+                return;
+            }
+
+            if (!currentUserIdFinal.equals(account.ownerId)) {
+                deliverFailure(callback, "Нет прав для удаления этого счёта");
+                return;
+            }
+
+            String now = isoNow();
+
+            // Soft-delete всех транзакций счёта
+            softDeleteTransactions(accountId, now);
+
+            // Soft-delete самого счёта
+            account.isDeleted = true;
+            account.isSynced  = false;
+            account.updatedAt = now;
+            database.accountDao().updateAccount(account);
+
+            deliverSuccess(callback, account);
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────
     //  ПОЛУЧЕНИЕ СЧЕТОВ ТЕКУЩЕГО ПОЛЬЗОВАТЕЛЯ
     // ─────────────────────────────────────────────────────────────
 
@@ -230,6 +287,30 @@ public class AccountService {
     //  ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
     // ─────────────────────────────────────────────────────────────
 
+    /**
+     * Помечает все транзакции счёта как удалённые и не синхронизированные,
+     * чтобы WorkManager распространил удаление в Firebase.
+     */
+    static void softDeleteTransactions(
+            @NonNull AppDatabase database,
+            @NonNull String accountId,
+            @NonNull String now
+    ) {
+        List<TransactionEntity> transactions =
+                database.transactionDao().getTransactionsByAccountIdSync(accountId);
+        for (TransactionEntity tx : transactions) {
+            tx.isDeleted = true;
+            tx.isSynced  = false;
+            tx.updatedAt = now;
+            database.transactionDao().updateTransaction(tx);
+        }
+    }
+
+    /** Приватная обёртка для вызова внутри этого сервиса. */
+    private void softDeleteTransactions(@NonNull String accountId, @NonNull String now) {
+        softDeleteTransactions(database, accountId, now);
+    }
+
     private void deliverSuccess(AccountCallback callback, AccountEntity account) {
         mainThreadExecutor.execute(() -> callback.onResult(AccountResult.success(account)));
     }
@@ -246,9 +327,6 @@ public class AccountService {
     //  AccountResult и AccountCallback
     // ─────────────────────────────────────────────────────────────
 
-    /**
-     * Результат операции над счётом.
-     */
     public static class AccountResult {
 
         private final boolean success;
@@ -286,9 +364,6 @@ public class AccountService {
         }
     }
 
-    /**
-     * Callback для получения результата операции над счётом.
-     */
     public interface AccountCallback {
         void onResult(@NonNull AccountResult result);
     }
