@@ -14,85 +14,116 @@ import java.util.List;
 
 /**
  * Data Access Object (DAO) for Limit entity.
- * Provides database operations for spending limit management including insertion and retrieval.
- * All queries filter out soft-deleted limits (isDeleted = 0), except sync queries which include
- * soft-deleted rows to propagate deletions to the cloud.
  *
- * Note: The current implementation allows multiple active limits per (accountId, tagId) pair.
- * If business rules require uniqueness, consider adding a UNIQUE constraint at the schema level.
+ * Поддерживаемые типы лимитов:
+ *   1. Общий лимит на счёт          → accountId + userId IS NULL + tagId IS NULL
+ *   2. Лимит на человека в счёте    → accountId + userId = X   + tagId IS NULL
+ *   3. Общий лимит на тег в счёте   → accountId + userId IS NULL + tagId = X
+ *   4. Лимит на тег на человека     → accountId + userId = X   + tagId = X
  */
 @Dao
 public interface LimitDao {
 
-    /**
-     * Inserts a new spending limit into the database.
-     * This is used when creating account-level or tag-specific spending limits.
-     *
-     * @param limit The LimitEntity to insert
-     */
     @Insert
     void insertLimit(@NonNull LimitEntity limit);
 
-    /**
-     * Retrieves all non-deleted limits for a specific account.
-     * This includes both account-wide limits and tag-specific limits.
-     *
-     * @param accountId The account's unique identifier (UUID)
-     * @return LiveData object containing a list of LimitEntity objects for the account
-     */
+    @Update
+    void updateLimit(@NonNull LimitEntity limit);
+
+    // ── 1. Общий лимит на счёт (userId IS NULL, tagId IS NULL) ──
+
+    @Query("SELECT * FROM limits WHERE accountId = :accountId " +
+            "AND userId IS NULL AND tagId IS NULL AND isDeleted = 0 " +
+            "ORDER BY updatedAt DESC LIMIT 1")
+    LiveData<LimitEntity> getAccountWideLimit(@NonNull String accountId);
+
+    @Query("SELECT * FROM limits WHERE accountId = :accountId " +
+            "AND userId IS NULL AND tagId IS NULL AND isDeleted = 0 " +
+            "ORDER BY updatedAt DESC LIMIT 1")
+    @Nullable
+    LimitEntity getAccountWideLimitSync(@NonNull String accountId);
+
+    // ── 2. Лимит на конкретного пользователя в счёте (tagId IS NULL) ──
+
+    @Query("SELECT * FROM limits WHERE accountId = :accountId " +
+            "AND userId = :userId AND tagId IS NULL AND isDeleted = 0 " +
+            "ORDER BY updatedAt DESC LIMIT 1")
+    LiveData<LimitEntity> getUserLimitInAccount(@NonNull String accountId, @NonNull String userId);
+
+    @Query("SELECT * FROM limits WHERE accountId = :accountId " +
+            "AND userId = :userId AND tagId IS NULL AND isDeleted = 0 " +
+            "ORDER BY updatedAt DESC LIMIT 1")
+    @Nullable
+    LimitEntity getUserLimitInAccountSync(@NonNull String accountId, @NonNull String userId);
+
+    // ── 3. Общий лимит на тег в счёте (userId IS NULL) ──
+
+    @Query("SELECT * FROM limits WHERE accountId = :accountId " +
+            "AND userId IS NULL AND tagId = :tagId AND isDeleted = 0 " +
+            "ORDER BY updatedAt DESC LIMIT 1")
+    LiveData<LimitEntity> getTagWideLimit(@NonNull String accountId, @NonNull String tagId);
+
+    @Query("SELECT * FROM limits WHERE accountId = :accountId " +
+            "AND userId IS NULL AND tagId = :tagId AND isDeleted = 0 " +
+            "ORDER BY updatedAt DESC LIMIT 1")
+    @Nullable
+    LimitEntity getTagWideLimitSync(@NonNull String accountId, @NonNull String tagId);
+
+    // ── 4. Лимит на тег для конкретного пользователя ──
+
+    @Query("SELECT * FROM limits WHERE accountId = :accountId " +
+            "AND userId = :userId AND tagId = :tagId AND isDeleted = 0 " +
+            "ORDER BY updatedAt DESC LIMIT 1")
+    LiveData<LimitEntity> getUserTagLimit(@NonNull String accountId,
+                                          @NonNull String userId,
+                                          @NonNull String tagId);
+
+    @Query("SELECT * FROM limits WHERE accountId = :accountId " +
+            "AND userId = :userId AND tagId = :tagId AND isDeleted = 0 " +
+            "ORDER BY updatedAt DESC LIMIT 1")
+    @Nullable
+    LimitEntity getUserTagLimitSync(@NonNull String accountId,
+                                    @NonNull String userId,
+                                    @NonNull String tagId);
+
+    // ── Все лимиты счёта ──
+
     @Query("SELECT * FROM limits WHERE accountId = :accountId AND isDeleted = 0")
     LiveData<List<LimitEntity>> getLimitsByAccountId(@NonNull String accountId);
 
     @Query("SELECT * FROM limits WHERE accountId = :accountId AND isDeleted = 0")
     List<LimitEntity> getLimitsByAccountIdSync(@NonNull String accountId);
 
-    /**
-     * Retrieves the account-wide limit for a specific account (where tagId is NULL).
-     * If multiple non-deleted account-wide limits exist, returns the most recently updated one.
-     * This deterministic ordering ensures consistent results.
-     *
-     * @param accountId The account's unique identifier (UUID)
-     * @return LiveData that emits the LimitEntity if an account-wide limit exists, or null otherwise
-     */
+    @Query("SELECT * FROM limits WHERE id = :limitId LIMIT 1")
+    @Nullable
+    LimitEntity getLimitByIdSync(@NonNull String limitId);
+
+    // ── Синхронизация ──
+
+    @Query("SELECT * FROM limits WHERE isSynced = 0")
+    List<LimitEntity> getUnsyncedLimits();
+
+    // ── Устаревшие методы (оставлены для обратной совместимости) ──
+
+    /** @deprecated Используй {@link #getAccountWideLimit(String)} */
+    @Deprecated
     @Query("SELECT * FROM limits WHERE accountId = :accountId AND tagId IS NULL AND isDeleted = 0 ORDER BY updatedAt DESC LIMIT 1")
     LiveData<LimitEntity> getAccountWideLimitByAccountId(@NonNull String accountId);
 
+    /** @deprecated Используй {@link #getAccountWideLimitSync(String)} */
+    @Deprecated
     @Query("SELECT * FROM limits WHERE accountId = :accountId AND tagId IS NULL AND isDeleted = 0 ORDER BY updatedAt DESC LIMIT 1")
     @Nullable
     LimitEntity getAccountWideLimitByAccountIdSync(@NonNull String accountId);
 
-    /**
-     * Retrieves a specific tag-specific limit by account and tag.
-     * This query only returns limits where tagId is NOT NULL (i.e., tag-specific limits).
-     * If multiple non-deleted limits exist for the same (accountId, tagId), returns the most recently updated one.
-     * This deterministic ordering ensures consistent results.
-     *
-     * @param accountId The account's unique identifier (UUID)
-     * @param tagId The tag's unique identifier (UUID, must not be null)
-     * @return LiveData that emits the LimitEntity if found, or null otherwise
-     */
+    /** @deprecated Используй {@link #getTagWideLimit(String, String)} */
+    @Deprecated
     @Query("SELECT * FROM limits WHERE accountId = :accountId AND tagId = :tagId AND isDeleted = 0 ORDER BY updatedAt DESC LIMIT 1")
     LiveData<LimitEntity> getLimitByAccountAndTag(@NonNull String accountId, @NonNull String tagId);
 
+    /** @deprecated Используй {@link #getTagWideLimitSync(String, String)} */
+    @Deprecated
     @Query("SELECT * FROM limits WHERE accountId = :accountId AND tagId = :tagId AND isDeleted = 0 ORDER BY updatedAt DESC LIMIT 1")
     @Nullable
     LimitEntity getLimitByAccountAndTagSync(@NonNull String accountId, @NonNull String tagId);
-
-    /**
-     * Retrieves all unsynced limits (isSynced = false).
-     * Used for Firebase synchronization.
-     *
-     * @return List of unsynced LimitEntity objects
-     */
-    @Query("SELECT * FROM limits WHERE isSynced = 0")
-    List<LimitEntity> getUnsyncedLimits();
-
-    /**
-     * Updates an existing limit entity.
-     * Used to mark limits as synced after Firebase upload.
-     *
-     * @param limit The LimitEntity to update
-     */
-    @Update
-    void updateLimit(@NonNull LimitEntity limit);
 }

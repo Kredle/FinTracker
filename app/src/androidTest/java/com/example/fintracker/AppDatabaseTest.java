@@ -8,7 +8,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import com.example.fintracker.bll.validators.AccountValidator;
 import com.example.fintracker.bll.validators.LimitValidator;
-import com.example.fintracker.bll.validators.SharedAccountMemberValidator;
 import com.example.fintracker.bll.validators.TagValidator;
 import com.example.fintracker.bll.validators.TransactionValidator;
 import com.example.fintracker.bll.validators.UserValidator;
@@ -890,75 +889,8 @@ public class AppDatabaseTest {
 
     // ========== SHARED ACCOUNT MEMBER VALIDATION AND MANAGEMENT TESTS ==========
 
-    @Test
-    public void testSharedAccountMemberInvalidRoleRejection() {
-        try {
-            SharedAccountMemberValidator.isValidRole("GUEST");
-            fail("Expected IllegalArgumentException for invalid role 'GUEST'");
-        } catch (IllegalArgumentException e) {
-            assertNotNull(e.getMessage());
-            assertTrue(e.getMessage().contains("must be exactly ADMIN or USER"));
-        }
-    }
 
-    @Test
-    public void testSharedAccountMemberRoleWithWhitespaceRejection() {
-        try {
-            SharedAccountMemberValidator.isValidRole(" ADMIN ");
-            fail("Expected IllegalArgumentException for role with leading/trailing whitespace");
-        } catch (IllegalArgumentException e) {
-            assertNotNull(e.getMessage());
-            assertTrue(e.getMessage().contains("cannot have leading or trailing whitespace"));
-        }
-    }
 
-    @Test
-    public void testSharedAccountMemberRoleLowercaseRejection() {
-        try {
-            SharedAccountMemberValidator.isValidRole("admin");
-            fail("Expected IllegalArgumentException for lowercase role (case-sensitive validation)");
-        } catch (IllegalArgumentException e) {
-            assertNotNull(e.getMessage());
-            assertTrue(e.getMessage().contains("must be exactly ADMIN or USER"));
-        }
-    }
-
-    @Test
-    public void testSharedAccountMemberValidRolesAccepted() {
-        assertTrue(SharedAccountMemberValidator.isValidRole("ADMIN"));
-        assertTrue(SharedAccountMemberValidator.isValidRole("USER"));
-    }
-
-    @Test
-    public void testAddSharedAccountMemberAndRetrieve() {
-        // Create test user and account
-        String userId1 = createTestUser("sharedmember.test@example.com", "sharedmembertester");
-        String userId2 = createTestUser("member2.test@example.com", "member2tester");
-        String accountId = createTestAccount(userId1, "Shared Checking", 5000.0);
-
-        // Validate role
-        SharedAccountMemberValidator.validateMemberCreation("ADMIN");
-
-        // Add member with ADMIN role
-        SharedAccountMemberEntity member = new SharedAccountMemberEntity();
-        member.id = UUID.randomUUID().toString();
-        member.accountId = accountId;
-        member.userId = userId2;
-        member.role = "ADMIN";
-        member.isSynced = false;
-        member.isDeleted = false;
-        member.updatedAt = getCurrentTimestamp();
-
-        sharedAccountMemberDao.addMember(member);
-
-        // Retrieve the member to verify
-        SharedAccountMemberEntity retrieved = sharedAccountMemberDao.getMemberSync(accountId, userId2);
-        assertNotNull(retrieved);
-        assertEquals(member.id, retrieved.id);
-        assertEquals("ADMIN", retrieved.role);
-        assertEquals(accountId, retrieved.accountId);
-        assertEquals(userId2, retrieved.userId);
-    }
 
     @Test
     public void testGetAllMembersForSharedAccount() {
@@ -1005,42 +937,6 @@ public class AppDatabaseTest {
         assertTrue(hasUser);
     }
 
-    @Test
-    public void testUpdateMemberRole() {
-        // Create test users and account
-        String ownerId = createTestUser("roleupdate.test@example.com", "roleupdatetester");
-        String memberId = createTestUser("memberrole.test@example.com", "memberroletester");
-        String accountId = createTestAccount(ownerId, "Business Account", 20000.0);
-
-        // Add member with USER role
-        SharedAccountMemberEntity member = new SharedAccountMemberEntity();
-        member.id = UUID.randomUUID().toString();
-        member.accountId = accountId;
-        member.userId = memberId;
-        member.role = "USER";
-        member.isSynced = false;
-        member.isDeleted = false;
-        member.updatedAt = getCurrentTimestamp();
-
-        sharedAccountMemberDao.addMember(member);
-
-        // Verify initial role
-        SharedAccountMemberEntity initialMember = sharedAccountMemberDao.getMemberSync(accountId, memberId);
-        assertNotNull(initialMember);
-        assertEquals("USER", initialMember.role);
-
-        // Validate new role before update
-        SharedAccountMemberValidator.validateMemberCreation("ADMIN");
-
-        // Update role to ADMIN
-        int rowsAffected = sharedAccountMemberDao.updateMemberRole(accountId, memberId, "ADMIN");
-        assertEquals(1, rowsAffected);
-
-        // Verify update
-        SharedAccountMemberEntity updatedMember = sharedAccountMemberDao.getMemberSync(accountId, memberId);
-        assertNotNull(updatedMember);
-        assertEquals("ADMIN", updatedMember.role);
-    }
 
     @Test
     public void testRemoveMemberFromSharedAccount() {

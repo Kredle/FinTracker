@@ -27,6 +27,12 @@ public class TransactionFilter {
     /** UUID счёта. Если задан — возвращаются только транзакции этого счёта. */
     @Nullable public final String accountId;
 
+    /**
+     * UUID пользователя. Если задан — только транзакции этого пользователя.
+     * Полезно для фильтрации трат конкретного участника в совместном счёте.
+     */
+    @Nullable public final String userId;
+
     /** UUID тега. Если задан — только транзакции с этим тегом. */
     @Nullable public final String tagId;
 
@@ -58,6 +64,7 @@ public class TransactionFilter {
 
     private TransactionFilter(Builder b) {
         this.accountId   = b.accountId;
+        this.userId      = b.userId;
         this.tagId       = b.tagId;
         this.type        = b.type;
         this.dateFrom    = b.dateFrom;
@@ -67,12 +74,13 @@ public class TransactionFilter {
 
     /** Возвращает true, если ни один фильтр не задан. */
     public boolean isEmpty() {
-        return accountId == null && tagId == null && type == null
+        return accountId == null && userId == null && tagId == null && type == null
                 && dateFrom == null && dateTo == null && searchQuery == null;
     }
 
     public static class Builder {
         @Nullable private String accountId;
+        @Nullable private String userId;
         @Nullable private String tagId;
         @Nullable private String type;
         @Nullable private String dateFrom;
@@ -81,6 +89,9 @@ public class TransactionFilter {
 
         public Builder accountId(@Nullable String accountId) {
             this.accountId = accountId; return this;
+        }
+        public Builder userId(@Nullable String userId) {
+            this.userId = userId; return this;
         }
         public Builder tagId(@Nullable String tagId) {
             this.tagId = tagId; return this;

@@ -374,6 +374,11 @@ public class TransactionService {
      *
      * Параметры передаются через bind args (защита от SQL-инъекций).
      */
+    // package-visible: используется в LimitService.willExceedLimit()
+    static SupportSQLiteQuery buildQueryStatic(@NonNull TransactionFilter f) {
+        return buildQuery(f);
+    }
+
     private static SupportSQLiteQuery buildQuery(@NonNull TransactionFilter f) {
         StringBuilder sql  = new StringBuilder(
                 "SELECT * FROM transactions WHERE isDeleted = 0");
@@ -382,6 +387,11 @@ public class TransactionService {
         if (f.accountId != null) {
             sql.append(" AND accountId = ?");
             args.add(f.accountId);
+        }
+
+        if (f.userId != null) {
+            sql.append(" AND userId = ?");
+            args.add(f.userId);
         }
 
         if (f.tagId != null) {
@@ -477,6 +487,63 @@ public class TransactionService {
                 throw new IllegalStateException("No error in successful TransactionResult");
             return errorMessage;
         }
+    }
+
+
+    // ─────────────────────────────────────────────────────────────
+    //  СУММА ТРАТ ПО ФИЛЬТРУ
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Возвращает общую сумму транзакций, соответствующих фильтру.
+     *
+     * Выполняется синхронно в вызывающем потоке — вызывай только из фонового потока
+     * (например, из ExecutorService или WorkManager).
+     *
+     * Типичные сценарии:
+     *   // Общие расходы по счёту за месяц:
+     *   double total = service.getTotalSpending(new TransactionFilter.Builder()
+     *       .accountId(accountId).type("EXPENSE")
+     *       .dateFrom("2025-03-01T00:00:00Z").dateTo("2025-03-31T23:59:59Z")
+     *       .build());
+     *
+     *   // Расходы по тегу "Еда" за неделю:
+     *   double total = service.getTotalSpending(new TransactionFilter.Builder()
+     *       .accountId(accountId).tagId(tagId).type("EXPENSE")
+     *       .dateFrom(weekStart).dateTo(weekEnd)
+     *       .build());
+     *
+     * @param filter Набор фильтров (см. {@link TransactionFilter})
+     * @return Сумма amount всех подходящих транзакций; 0.0 если ни одна не найдена
+     */
+    public double getTotalSpending(@NonNull TransactionFilter filter) {
+        List<TransactionEntity> transactions = getFilteredTransactionsSync(filter);
+        double total = 0.0;
+        for (TransactionEntity tx : transactions) {
+            total += tx.amount;
+        }
+        return total;
+    }
+
+    /**
+     * Асинхронная версия getTotalSpending — результат доставляется в callback
+     * на главном потоке.
+     *
+     * @param filter   Набор фильтров
+     * @param callback Callback с результатом (Double — итоговая сумма)
+     */
+    public void getTotalSpendingAsync(
+            @NonNull TransactionFilter filter,
+            @NonNull SpendingCallback callback
+    ) {
+        executorService.execute(() -> {
+            double total = getTotalSpending(filter);
+            mainThreadExecutor.execute(() -> callback.onResult(total));
+        });
+    }
+
+    public interface SpendingCallback {
+        void onResult(double totalAmount);
     }
 
     public interface TransactionCallback {
