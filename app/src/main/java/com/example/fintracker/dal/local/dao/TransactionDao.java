@@ -50,28 +50,29 @@ public interface TransactionDao {
 
     // ── Динамический запрос с любой комбинацией фильтров ─────────
 
-    /**
-     * Выполняет произвольный SQL-запрос, сформированный в TransactionService.
-     * Используется для комбинации фильтров (accountId, tagId, type, dateFrom, dateTo, searchQuery).
-     */
     @RawQuery(observedEntities = TransactionEntity.class)
     LiveData<List<TransactionEntity>> getFilteredTransactions(SupportSQLiteQuery query);
 
-    /**
-     * Синхронная версия динамического запроса — для фоновых операций и тестов.
-     */
     @RawQuery
     List<TransactionEntity> getFilteredTransactionsSync(SupportSQLiteQuery query);
 
     // ── Удаление ─────────────────────────────────────────────────
 
-    /**
-     * Soft-delete транзакции: isDeleted=1, isSynced=0.
-     * updatedAt проставляется через datetime('now') прямо в SQL —
-     * сигнатура остаётся однопараметровой для совместимости с TransactionRepository.
-     */
     @Query("UPDATE transactions SET isDeleted = 1, isSynced = 0, updatedAt = datetime('now') WHERE id = :transactionId")
     void deleteTransaction(@NonNull String transactionId);
+
+    // ── Дедупликация банковских транзакций ────────────────────────
+
+    /**
+     * Проверяет, существует ли транзакция с данным bankMessageHash.
+     * Используется в BankNotificationService для защиты от дублирования
+     * одного уведомления MonoBank.
+     *
+     * @param hash SHA-256 хэш текста уведомления
+     * @return true если транзакция с таким хэшем уже есть в базе
+     */
+    @Query("SELECT EXISTS(SELECT 1 FROM transactions WHERE bankMessageHash = :hash AND isDeleted = 0 LIMIT 1)")
+    boolean existsByBankMessageHash(@NonNull String hash);
 
     // ── Синхронизация ─────────────────────────────────────────────
 
