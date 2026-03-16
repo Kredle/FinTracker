@@ -1,11 +1,25 @@
 package com.example.fintracker.ui.activities;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.example.fintracker.bll.services.AuthService;
+import com.example.fintracker.bll.session.SessionManager;
+import com.example.fintracker.dal.local.database.AppDatabase;
+import com.example.fintracker.dal.local.entities.UserEntity;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkManager;
+import com.example.fintracker.remote.firebase.FirebaseSyncWorker;
 
 import com.example.fintracker.dal.local.entities.AccountEntity;
 import com.example.fintracker.dal.local.entities.TagEntity;
@@ -30,19 +44,26 @@ import java.util.UUID;
  */
 public class LoginActivity extends AppCompatActivity {
 
-    private static final String TAG = "LOGIN_TEST";
+    private static final String TAG = "AUTH_TEST";
+
+    // ── Данные для теста ──────────────────────────────
+    private static final String TEST_EMAIL    = "test@example.com";
+    private static final String TEST_USERNAME = "testuser";
+    private static final String TEST_PASSWORD = "password123";
+    // ─────────────────────────────────────────────────
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // TODO: Uncomment and set actual layout when created
-        // setContentView(R.layout.activity_login);
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (SessionManager.getInstance().isLoggedIn()) {
+                Log.d(TAG, "Привет снова, " + SessionManager.getInstance().getCurrentUser().name);
+            } else {
+                Log.d(TAG, "Нужен логин");
+            }
+        }, 500);
 
-        // TODO: Initialize UI components and set up login/registration logic
-
-        // TEMPORARY: Create test data using REPOSITORIES (production approach)
-        createTestDataUsingRepositories();
     }
 
     /**
@@ -55,6 +76,24 @@ public class LoginActivity extends AppCompatActivity {
      * <p>
      * REMOVE THIS METHOD after verifying Firebase sync works!
      */
+
+    private void testLogin(){
+        Log.d(TAG, "▶ Логин: " + TEST_EMAIL + " / " + TEST_USERNAME);
+        AuthService authService = new AuthService(getApplication());
+        authService.login(TEST_EMAIL, TEST_PASSWORD, loginResult -> {
+
+            if (loginResult.isSuccess()) {
+                Log.d(TAG, "✅ Вход успешен!");
+                Log.d(TAG, "   Залогинен: " + loginResult.getUser().name);
+                Log.d(TAG, "   SessionManager.isLoggedIn() = "
+                        + SessionManager.getInstance().isLoggedIn());
+                Log.d(TAG, "   SessionManager.getCurrentUserId() = "
+                        + SessionManager.getInstance().getCurrentUserId());
+            } else {
+                Log.e(TAG, "❌ Вход не удался: " + loginResult.getErrorMessage());
+            }
+        });
+    }
     private void createTestDataUsingRepositories() {
         // Initialize repositories
         AccountRepository accountRepo = new AccountRepository(getApplication());

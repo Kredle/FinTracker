@@ -5,7 +5,9 @@ import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.Query;
+import androidx.room.RawQuery;
 import androidx.room.Update;
+import androidx.sqlite.db.SupportSQLiteQuery;
 
 import com.example.fintracker.dal.local.entities.TransactionEntity;
 
@@ -13,74 +15,67 @@ import java.util.List;
 
 /**
  * Data Access Object (DAO) for Transaction entity.
- * Provides database operations for transaction management including insertion, retrieval, search, and soft-deletion.
- * All queries filter out soft-deleted transactions (isDeleted = 0), except sync queries which include
- * soft-deleted rows to propagate deletions to the cloud.
  */
 @Dao
 public interface TransactionDao {
 
-    /**
-     * Inserts a new transaction into the database.
-     * This is used when recording income or expense transactions.
-     *
-     * @param transaction The TransactionEntity to insert
-     */
     @Insert
     void insertTransaction(@NonNull TransactionEntity transaction);
 
-    /**
-     * Updates an existing transaction in the database.
-     * Can be used for updating transaction fields after sync operations.
-     *
-     * @param transaction The TransactionEntity with updated values
-     */
     @Update
     void updateTransaction(@NonNull TransactionEntity transaction);
 
-    /**
-     * Retrieves all non-deleted transactions for a specific account.
-     * Results are ordered by timestamp in descending order (newest first).
-     *
-     * @param accountId The account's unique identifier (UUID)
-     * @return LiveData list of TransactionEntity objects for the account, empty list if none exist
-     */
+    // ── Базовые запросы ──────────────────────────────────────────
+
     @Query("SELECT * FROM transactions WHERE accountId = :accountId AND isDeleted = 0 ORDER BY timestamp DESC")
     LiveData<List<TransactionEntity>> getTransactionsByAccountId(@NonNull String accountId);
 
     @Query("SELECT * FROM transactions WHERE accountId = :accountId AND isDeleted = 0 ORDER BY timestamp DESC")
     List<TransactionEntity> getTransactionsByAccountIdSync(@NonNull String accountId);
 
-    /**
-     * Searches for transactions by keyword in title or description.
-     * Uses SQL LIKE with wildcards to match partial strings in either field.
-     * Results are ordered by timestamp in descending order (newest first).
-     *
-     * @param accountId The account's unique identifier (UUID)
-     * @param searchQuery The search keyword (will be matched against title and description using LIKE %query%)
-     * @return LiveData list of matching TransactionEntity objects, empty list if none match
-     */
-    @Query("SELECT * FROM transactions WHERE accountId = :accountId AND isDeleted = 0 AND (title LIKE '%' || :searchQuery || '%' OR description LIKE '%' || :searchQuery || '%') ORDER BY timestamp DESC")
-    LiveData<List<TransactionEntity>> searchTransactions(@NonNull String accountId, @NonNull String searchQuery);
+    @Query("SELECT * FROM transactions WHERE id = :transactionId AND isDeleted = 0 LIMIT 1")
+    TransactionEntity getTransactionByIdSync(@NonNull String transactionId);
 
-    @Query("SELECT * FROM transactions WHERE accountId = :accountId AND isDeleted = 0 AND (title LIKE '%' || :searchQuery || '%' OR description LIKE '%' || :searchQuery || '%') ORDER BY timestamp DESC")
-    List<TransactionEntity> searchTransactionsSync(@NonNull String accountId, @NonNull String searchQuery);
+    // ── Поиск по тексту (оставлен для обратной совместимости) ────
 
-    /**
-     * Soft-deletes a transaction by setting isDeleted flag to true.
-     * This preserves data for sync operations while hiding the transaction from views.
-     *
-     * @param transactionId The transaction's ID to soft-delete
-     */
-    @Query("UPDATE transactions SET isDeleted = 1 WHERE id = :transactionId")
+    @Query("SELECT * FROM transactions WHERE accountId = :accountId AND isDeleted = 0 " +
+            "AND (title LIKE '%' || :q || '%' OR description LIKE '%' || :q || '%') " +
+            "ORDER BY timestamp DESC")
+    LiveData<List<TransactionEntity>> searchTransactions(@NonNull String accountId, @NonNull String q);
+
+    @Query("SELECT * FROM transactions WHERE accountId = :accountId AND isDeleted = 0 " +
+            "AND (title LIKE '%' || :q || '%' OR description LIKE '%' || :q || '%') " +
+            "ORDER BY timestamp DESC")
+    List<TransactionEntity> searchTransactionsSync(@NonNull String accountId, @NonNull String q);
+
+    // ── Динамический запрос с любой комбинацией фильтров ─────────
+
+    @RawQuery(observedEntities = TransactionEntity.class)
+    LiveData<List<TransactionEntity>> getFilteredTransactions(SupportSQLiteQuery query);
+
+    @RawQuery
+    List<TransactionEntity> getFilteredTransactionsSync(SupportSQLiteQuery query);
+
+    // ── Удаление ─────────────────────────────────────────────────
+
+    @Query("UPDATE transactions SET isDeleted = 1, isSynced = 0, updatedAt = datetime('now') WHERE id = :transactionId")
     void deleteTransaction(@NonNull String transactionId);
 
+    // ── Дедупликация банковских транзакций ────────────────────────
+
     /**
-     * Retrieves all transactions that need to be synced.
-     * Transactions with isSynced = false are candidates for cloud sync.
+     * Проверяет, существует ли транзакция с данным bankMessageHash.
+     * Используется в BankNotificationService для защиты от дублирования
+     * одного уведомления MonoBank.
      *
-     * @return List of unsynchronized TransactionEntity objects
+     * @param hash SHA-256 хэш текста уведомления
+     * @return true если транзакция с таким хэшем уже есть в базе
      */
+    @Query("SELECT EXISTS(SELECT 1 FROM transactions WHERE bankMessageHash = :hash AND isDeleted = 0 LIMIT 1)")
+    boolean existsByBankMessageHash(@NonNull String hash);
+
+    // ── Синхронизация ─────────────────────────────────────────────
+
     @Query("SELECT * FROM transactions WHERE isSynced = 0")
     List<TransactionEntity> getUnsyncedTransactions();
 }

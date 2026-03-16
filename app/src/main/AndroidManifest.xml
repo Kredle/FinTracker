@@ -2,6 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Разрешение на чтение уведомлений (запрашивается через системные настройки,
+         не через runtime permission dialog) -->
+    <uses-permission android:name="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+        tools:ignore="ProtectedPermissions" />
+
     <application
         android:name=".FinTrackerApplication"
         android:allowBackup="true"
@@ -21,6 +26,32 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+            BankNotificationService — слушает уведомления MonoBank.
+
+            ВАЖНО: android:permission гарантирует, что сервис может быть
+            запущен только системой (защита от сторонних приложений).
+
+            Сервис активируется автоматически системой после того, как
+            пользователь выдаёт разрешение в:
+            Настройки → Приложения → Специальный доступ → Доступ к уведомлениям
+        -->
+        <!--
+            android:enabled="false" — сервис отключён по умолчанию.
+            Включается программно через BankNotificationService.enable(context)
+            только когда пользователь устанавливает isBankSyncEnabled = true.
+        -->
+        <service
+            android:name=".bll.services.bank.BankNotificationService"
+            android:exported="true"
+            android:enabled="false"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
 
     </application>
 
