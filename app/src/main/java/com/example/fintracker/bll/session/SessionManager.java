@@ -47,25 +47,25 @@ public class SessionManager {
     }
 
     /** Сохраняет пользователя как текущего (вызывается после логина/регистрации). */
-    public void login(@NonNull UserEntity user) {
+    public synchronized void login(@NonNull UserEntity user) {
         this.currentUser = user;
 
     }
 
     /** Очищает сессию (вызывается при логауте). */
-    public void logout() {
+    public synchronized void logout() {
         this.currentUser = null;
     }
 
     /** Возвращает текущего пользователя или null если не залогинен. */
     @Nullable
-    public UserEntity getCurrentUser() {
+    public synchronized UserEntity getCurrentUser() {
         return currentUser;
     }
 
     /** Возвращает ID текущего пользователя или null если не залогинен. */
     @Nullable
-    public String getCurrentUserId() {
+    public synchronized String getCurrentUserId() {
         return currentUser != null ? currentUser.id : null;
     }
 
@@ -74,7 +74,7 @@ public class SessionManager {
      * @throws IllegalStateException если пользователь не залогинен
      */
     @NonNull
-    public String requireUserId() {
+    public synchronized String requireUserId() {
         if (currentUser == null) {
             throw new IllegalStateException("No user is currently logged in. Call login() first.");
         }
@@ -82,7 +82,7 @@ public class SessionManager {
     }
 
     /** Проверяет, залогинен ли пользователь. */
-    public boolean isLoggedIn() {
+    public synchronized boolean isLoggedIn() {
         return currentUser != null;
     }
 }
