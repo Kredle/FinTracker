@@ -44,26 +44,23 @@ public class FinTrackerApplication extends Application {
         Log.d(TAG, "Найден сохранённый userId: " + savedUserId + " — восстанавливаем сессию...");
 
         // Загружаем юзера из базы в фоне
-        ExecutorService executor = Executors.newSingleThreadExecutor();
-        executor.execute(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    UserEntity user = AppDatabase.getInstance(FinTrackerApplication.this)
-                            .userDao()
-                            .getUserByIdSync(savedUserId);
+        public class FinTrackerApplication extends Application {
 
-                    if (user != null && !user.isDeleted) {
-                        SessionManager.getInstance().login(user);
-                        Log.d(TAG, "✅ Сессия восстановлена: " + user.name + " (" + user.email + ")");
-                    } else {
-                        // Юзер удалён или не найден — очищаем устаревшие данные
-                        sessionStorage.clear();
-                        Log.w(TAG, "⚠ Сохранённый userId не найден в базе — сессия сброшена");
-                    }
-                } finally {
-                    executor.shutdown();
-                }
+        Log.d(TAG, "Найден сохранённый userId: " + savedUserId + " — восстанавливаем сессию...");
+
+        // Загружаем юзера из базы в фоне
+        Executors.newSingleThreadExecutor().execute(() -> {
+            UserEntity user = AppDatabase.getInstance(this)
+                    .userDao()
+                    .getUserByIdSync(savedUserId);
+
+            if (user != null && !user.isDeleted) {
+                SessionManager.getInstance().login(user);
+                Log.d(TAG, "✅ Сессия восстановлена: " + user.name + " (" + user.email + ")");
+            } else {
+                // Юзер удалён или не найден — очищаем устаревшие данные
+                sessionStorage.clear();
+                Log.w(TAG, "⚠ Сохранённый userId не найден в базе — сессия сброшена");
             }
         });
     }
