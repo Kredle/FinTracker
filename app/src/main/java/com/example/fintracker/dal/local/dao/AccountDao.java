@@ -37,10 +37,10 @@ public interface AccountDao {
      * @param ownerId The owner's user ID (UUID)
      * @return LiveData that emits the list of AccountEntity objects for the user; emits an empty list if none exist
      */
-    @Query("SELECT DISTINCT a.* FROM accounts a LEFT JOIN shared_account_members m ON a.id = m.accountId AND m.isDeleted = 0 WHERE (a.ownerId = :ownerId OR m.userId = :ownerId) AND a.isDeleted = 0 ORDER BY a.name ASC")
+    @Query("SELECT DISTINCT a.* FROM accounts a LEFT JOIN shared_account_members m ON a.id = m.accountId AND m.isDeleted = 0 WHERE (a.ownerId = :ownerId OR m.userId = :ownerId) AND a.isDeleted = 0 ORDER BY a.isShared ASC, a.name ASC")
     LiveData<List<AccountEntity>> getAccountsByUserId(@NonNull String ownerId);
 
-    @Query("SELECT DISTINCT a.* FROM accounts a LEFT JOIN shared_account_members m ON a.id = m.accountId AND m.isDeleted = 0 WHERE (a.ownerId = :ownerId OR m.userId = :ownerId) AND a.isDeleted = 0 ORDER BY a.name ASC")
+    @Query("SELECT DISTINCT a.* FROM accounts a LEFT JOIN shared_account_members m ON a.id = m.accountId AND m.isDeleted = 0 WHERE (a.ownerId = :ownerId OR m.userId = :ownerId) AND a.isDeleted = 0 ORDER BY a.isShared ASC, a.name ASC")
     List<AccountEntity> getAccountsByUserIdSync(@NonNull String ownerId);
 
     /**
