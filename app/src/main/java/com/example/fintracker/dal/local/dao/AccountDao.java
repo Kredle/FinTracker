@@ -31,16 +31,16 @@ public interface AccountDao {
     void insertAccount(@NonNull AccountEntity account);
 
     /**
-     * Retrieves all accounts owned by a specific user.
+     * Retrieves all accounts accessible by a specific user (owned accounts + shared accounts where user is a member).
      * Used to display a user's accounts in the UI.
      *
      * @param ownerId The owner's user ID (UUID)
      * @return LiveData that emits the list of AccountEntity objects for the user; emits an empty list if none exist
      */
-    @Query("SELECT * FROM accounts WHERE ownerId = :ownerId AND isDeleted = 0 ORDER BY name ASC")
+    @Query("SELECT DISTINCT a.* FROM accounts a LEFT JOIN shared_account_members m ON a.id = m.accountId AND m.isDeleted = 0 WHERE (a.ownerId = :ownerId OR m.userId = :ownerId) AND a.isDeleted = 0 ORDER BY a.name ASC")
     LiveData<List<AccountEntity>> getAccountsByUserId(@NonNull String ownerId);
 
-    @Query("SELECT * FROM accounts WHERE ownerId = :ownerId AND isDeleted = 0 ORDER BY name ASC")
+    @Query("SELECT DISTINCT a.* FROM accounts a LEFT JOIN shared_account_members m ON a.id = m.accountId AND m.isDeleted = 0 WHERE (a.ownerId = :ownerId OR m.userId = :ownerId) AND a.isDeleted = 0 ORDER BY a.name ASC")
     List<AccountEntity> getAccountsByUserIdSync(@NonNull String ownerId);
 
     /**
@@ -139,4 +139,17 @@ public interface AccountDao {
      */
     @Query("SELECT * FROM accounts WHERE isSynced = 0")
     List<AccountEntity> getUnsyncedAccounts();
+
+    /**
+     * Retrieves all shared accounts accessible by a specific user (owned shared accounts + shared accounts where user is a member).
+     * Used to display shared accounts in the accounts tab.
+     *
+     * @param ownerId The user's ID (UUID)
+     * @return List of shared AccountEntity objects accessible by the user; empty list if none exist
+     */
+    @Query("SELECT DISTINCT a.* FROM accounts a LEFT JOIN shared_account_members m ON a.id = m.accountId AND m.isDeleted = 0 WHERE a.isShared = 1 AND (a.ownerId = :ownerId OR m.userId = :ownerId) AND a.isDeleted = 0 ORDER BY a.name ASC")
+    List<AccountEntity> getSharedAccountsByOwner(@NonNull String ownerId);
+
+    @Query("SELECT id FROM accounts WHERE ownerId = :userId AND isDeleted = 0")
+    List<String> getAccountIdsByUserIdSync(@NonNull String userId);
 }

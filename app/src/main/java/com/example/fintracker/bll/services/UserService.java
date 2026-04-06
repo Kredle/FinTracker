@@ -425,6 +425,74 @@ public class UserService {
     }
 
     // ─────────────────────────────────────────────────────────────
+    //  ЗАГАЛЬНИЙ ЛІМІТ ВИТРАТ
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Устанавливает общий лимит расходов текущего пользователя.
+     * Используется для контроля месячных трат.
+     *
+     * @param generalLimit Лимит (≥ 0)
+     * @param callback     Результат операции
+     */
+    public void setGeneralLimit(
+            double generalLimit,
+            @NonNull UserCallback callback
+    ) {
+        String userId = requireSession(callback);
+        if (userId == null) return;
+
+        if (Double.isNaN(generalLimit) || Double.isInfinite(generalLimit)) {
+            deliverFailure(callback, "Некорректное значение лимита");
+            return;
+        }
+        if (generalLimit < 0) {
+            deliverFailure(callback, "Лимит не может быть отрицательным");
+            return;
+        }
+
+        executorService.execute(() -> {
+            UserEntity user = database.userDao().getUserByIdSync(userId);
+            if (user == null) {
+                deliverFailure(callback, "Пользователь не найден");
+                return;
+            }
+
+            user.generalLimit = generalLimit;
+            user.isSynced     = false;
+            user.updatedAt    = isoNow();
+            database.userDao().updateUser(user);
+
+            // Обновляем сессию
+            SessionManager.getInstance().login(user);
+
+            deliverSuccess(callback, user);
+        });
+    }
+
+    /**
+     * Возвращает текущий общий лимит расходов залогиненного пользователя.
+     * Читается из базы данных для обеспечения персистентности после выхода.
+     *
+     * @param callback Результат: result.getValue() — значение лимита
+     * @throws IllegalStateException если пользователь не залогинен
+     */
+    public void getGeneralLimit(@NonNull DoubleCallback callback) {
+        String userId = requireSessionDouble(callback);
+        if (userId == null) return;
+
+        executorService.execute(() -> {
+            // Читаем из базы данных, чтобы обеспечить персистентность
+            UserEntity currentUser = database.userDao().getUserByIdSync(userId);
+            if (currentUser == null) {
+                mainThreadExecutor.execute(() -> callback.onResult(DoubleResult.failure("Пользователь не найден")));
+                return;
+            }
+            mainThreadExecutor.execute(() -> callback.onResult(DoubleResult.success(currentUser.generalLimit)));
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────
     //  ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
     // ─────────────────────────────────────────────────────────────
 
@@ -548,5 +616,106 @@ public class UserService {
 
     public interface DoubleCallback {
         void onResult(@NonNull DoubleResult result);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  StringResult / StringCallback  (для getUserName)
+    // ─────────────────────────────────────────────────────────────
+
+    public static class StringResult {
+        private final boolean success;
+        private final String value;
+        private final String errorMessage;
+
+        public StringResult(boolean success, String value, String errorMessage) {
+            this.success = success;
+            this.value = value;
+            this.errorMessage = errorMessage;
+        }
+
+        public boolean isSuccess() { return success; }
+
+        /** Значение. Имеет смысл только при isSuccess() == true. */
+        public String getValue() { return value; }
+
+        @NonNull
+        public String getErrorMessage() {
+            if (errorMessage == null) throw new IllegalStateException("No error in successful StringResult");
+            return errorMessage;
+        }
+    }
+
+    public interface StringCallback {
+        void onResult(@NonNull StringResult result);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  UserName / UserNameCallback
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Результат операции получения имени пользователя.
+     * При успехе содержит имя пользователя в виде строки.
+     */
+    public static class UserNameResult {
+
+        private final boolean success;
+        @Nullable private final String value;
+        @Nullable private final String errorMessage;
+
+        private UserNameResult(boolean success,
+                           @Nullable String value,
+                           @Nullable String errorMessage) {
+            this.success      = success;
+            this.value        = value;
+            this.errorMessage = errorMessage;
+        }
+
+        public static UserNameResult success(@NonNull String value) {
+            return new UserNameResult(true, value, null);
+        }
+
+        public static UserNameResult failure(@NonNull String errorMessage) {
+            return new UserNameResult(false, null, errorMessage);
+        }
+
+        public boolean isSuccess() { return success; }
+
+        /** Значение имени. Имеет смысл только при isSuccess() == true. */
+        public String getValue() { return value; }
+
+        @NonNull
+        public String getErrorMessage() {
+            if (errorMessage == null) throw new IllegalStateException("No error in successful UserNameResult");
+            return errorMessage;
+        }
+    }
+
+    public interface UserNameCallback {
+        void onResult(@NonNull UserNameResult result);
+    }
+
+    public void getUserName(@NonNull StringCallback callback) {
+        String userId = requireSessionString(callback);
+        if (userId == null) return;
+
+        // Берём из сессии — актуально, т.к. мы обновляем сессию после изменений
+        UserEntity currentUser = SessionManager.getInstance().getCurrentUser();
+        if (currentUser == null) {
+            mainThreadExecutor.execute(() -> callback.onResult(new StringResult(false, null, "Користувач не знайдений")));
+            return;
+        }
+        mainThreadExecutor.execute(() -> callback.onResult(new StringResult(true, currentUser.name, null)));
+    }
+
+    @Nullable
+    private String requireSessionString(@NonNull StringCallback callback) {
+        try {
+            return SessionManager.getInstance().requireUserId();
+        } catch (IllegalStateException e) {
+            mainThreadExecutor.execute(() ->
+                    callback.onResult(new StringResult(false, null, "Необхідно увійти в обліковий запис")));
+            return null;
+        }
     }
 }

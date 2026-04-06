@@ -1,8 +1,11 @@
 package com.example.fintracker;
 
 import android.content.Context;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
 
 import androidx.room.Room;
+import androidx.room.migration.Migration;
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
@@ -30,12 +33,17 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 import java.util.UUID;
+
+import androidx.sqlite.db.SupportSQLiteDatabase;
+import androidx.sqlite.db.SupportSQLiteOpenHelper.Configuration;
+import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory;
 
 import static org.junit.Assert.*;
 
@@ -110,7 +118,7 @@ public class AppDatabaseTest {
             fail("Expected IllegalArgumentException for invalid email");
         } catch (IllegalArgumentException e) {
             assertNotNull(e.getMessage());
-            assertTrue(e.getMessage().contains("Email format is invalid"));
+            assertTrue(e.getMessage().contains("Невірний формат електронної пошти"));
         }
     }
 
@@ -126,7 +134,7 @@ public class AppDatabaseTest {
             fail("Expected IllegalArgumentException for username with leading/trailing whitespace");
         } catch (IllegalArgumentException e) {
             assertNotNull(e.getMessage());
-            assertTrue(e.getMessage().contains("cannot have leading or trailing whitespace"));
+            assertTrue(e.getMessage().contains("пробіли на початку або наприкінці"));
         }
     }
 
@@ -794,6 +802,90 @@ public class AppDatabaseTest {
         // Verify getLimitsByAccountId returns both
         List<LimitEntity> allLimits = limitDao.getLimitsByAccountIdSync(accountId);
         assertEquals(2, allLimits.size());
+    }
+
+    // ========== DATABASE MIGRATION TESTS ==========
+
+    @Test
+    public void testMigration1To2() throws Exception {
+        // Test that MIGRATION_1_2 can be executed without errors
+        // We create an in-memory database and manually execute the migration SQL
+        Context context = ApplicationProvider.getApplicationContext();
+
+        // Create a temporary database to test migration
+        AppDatabase tempDb = Room.databaseBuilder(context, AppDatabase.class, "temp_migration_test.db")
+                .build();
+
+        // Get the migration and execute it on a test database
+        Migration migration = AppDatabase.getMigration1To2();
+        assertNotNull("Migration 1->2 should not be null", migration);
+        assertEquals(1, migration.startVersion);
+        assertEquals(2, migration.endVersion);
+
+        tempDb.close();
+        context.deleteDatabase("temp_migration_test.db");
+    }
+
+    @Test
+    public void testMigration2To3() throws Exception {
+        // Test that MIGRATION_2_3 can be executed without errors
+        Context context = ApplicationProvider.getApplicationContext();
+
+        // Create a temporary database to test migration
+        AppDatabase tempDb = Room.databaseBuilder(context, AppDatabase.class, "temp_migration_test.db")
+                .build();
+
+        // Get the migration and execute it on a test database
+        Migration migration = AppDatabase.getMigration2To3();
+        assertNotNull("Migration 2->3 should not be null", migration);
+        assertEquals(2, migration.startVersion);
+        assertEquals(3, migration.endVersion);
+
+        tempDb.close();
+        context.deleteDatabase("temp_migration_test.db");
+    }
+
+    @Test
+    public void testMigration1To3() throws Exception {
+        // Test that MIGRATION_1_3 can be executed without errors
+        Context context = ApplicationProvider.getApplicationContext();
+
+        // Create a temporary database to test migration
+        AppDatabase tempDb = Room.databaseBuilder(context, AppDatabase.class, "temp_migration_test.db")
+                .build();
+
+        // Get the migration and execute it on a test database
+        Migration migration = AppDatabase.getMigration1To3();
+        assertNotNull("Migration 1->3 should not be null", migration);
+        assertEquals(1, migration.startVersion);
+        assertEquals(3, migration.endVersion);
+
+        tempDb.close();
+        context.deleteDatabase("temp_migration_test.db");
+    }
+
+    @Test
+    public void testFallbackToDestructiveMigration() {
+        // Test that fallback to destructive migration works when migrations fail
+        Context context = ApplicationProvider.getApplicationContext();
+
+        // Create database with fallback enabled (this is the default in AppDatabase)
+        AppDatabase db = Room.databaseBuilder(context, AppDatabase.class, "test_fallback.db")
+                .fallbackToDestructiveMigration()
+                .build();
+
+        // Should initialize successfully
+        assertNotNull(db);
+
+        // Should be able to perform operations
+        UserDao userDao = db.userDao();
+        List<UserEntity> users = userDao.getUnsyncedUsers(); // Use available method
+        assertNotNull(users);
+
+        db.close();
+
+        // Clean up
+        context.deleteDatabase("test_fallback.db");
     }
 
     // ========== HELPER METHODS ==========

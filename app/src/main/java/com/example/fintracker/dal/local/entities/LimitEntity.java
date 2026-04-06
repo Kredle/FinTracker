@@ -20,5 +20,15 @@ public class LimitEntity {
     public boolean isSynced = false;
     public boolean isDeleted = false;
     public String updatedAt;
-}
 
+    // Конструктор без аргументів для Room
+    public LimitEntity() {
+        this.id = "";
+        this.accountId = "";
+        this.userId = null;
+        this.tagId = null;
+        this.amountLimit = 0.0;
+        this.period = "";
+        this.updatedAt = "";
+    }
+}

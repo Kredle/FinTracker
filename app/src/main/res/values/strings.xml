@@ -1,3 +1,74 @@
 <resources>
     <string name="app_name">FinTracker</string>
+
+    <!-- Authentication -->
+    <string name="login_title">FinTracker</string>
+    <string name="login_email_hint">Логін/Пошта</string>
+    <string name="login_password_hint">Пароль</string>
+    <string name="login_button">Увійти</string>
+    <string name="register_button">Зареєструватися</string>
+    <string name="login_remember_me">Запам\'ятати мене</string>
+
+    <!-- Registration -->
+    <string name="register_title">Реєстрація</string>
+    <string name="register_email_hint">Електронна пошта</string>
+    <string name="register_password_confirm_hint">Підтвердіть пароль</string>
+    <string name="register_back_button">Назад</string>
+    <string name="register_submit_button">Зареєструватися</string>
+
+    <!-- Home Screen -->
+    <string name="home_total_balance">Загальний баланс</string>
+    <string name="home_account_switch">Перемикання рахунку</string>
+    <string name="home_limit_info">Ліміт: %1$s / %2$s</string>
+    <string name="home_account_settings">Налаштування рахунку</string>
+    <string name="home_add_transaction">Додати транзакцію</string>
+    <string name="home_recent_transactions">Останні транзакції</string>
+    <string name="home_search_transactions">Пошук транзакцій</string>
+
+    <!-- Transaction -->
+    <string name="transaction_expense">Витрата</string>
+    <string name="transaction_income">Поповнення</string>
+    <string name="transaction_amount">Сума</string>
+    <string name="transaction_name">Назва транзакції</string>
+    <string name="transaction_account">Рахунок</string>
+    <string name="transaction_tag">Тег</string>
+    <string name="transaction_description">Опис</string>
+    <string name="transaction_save">Зберегти</string>
+    <string name="transaction_available_limit">Доступний ліміт: %1$s</string>
+    <string name="transaction_work_hours">Еквівалент %1$d годин роботи</string>
+
+    <!-- Statistics -->
+    <string name="statistics_chart_tab">Графік</string>
+    <string name="statistics_pie_tab">Діаграма</string>
+    <string name="statistics_filter_user">Користувач</string>
+    <string name="statistics_filter_account">Рахунок</string>
+    <string name="statistics_filter_period">Період</string>
+    <string name="statistics_filter_tags">Теги</string>
+
+    <!-- Account Settings -->
+    <string name="account_members">Учасники рахунку</string>
+    <string name="account_add_user">Додати користувача</string>
+    <string name="account_limits">Налаштування лімітів</string>
+    <string name="account_limit_user">Виберіть користувача</string>
+    <string name="account_limit_type">Загальний або тег</string>
+    <string name="account_limit_amount">Сума ліміту</string>
+    <string name="account_limit_period">Період</string>
+    <string name="account_limit_period_day">День</string>
+    <string name="account_limit_period_week">Тиждень</string>
+    <string name="account_limit_period_month">Місяць</string>
+
+    <!-- Profile & Settings -->
+    <string name="profile_hourly_rate">Погодинна ставка</string>
+    <string name="profile_manage_tags">Управління тегами</string>
+    <string name="profile_bank_sync">Дозволити читання банківських сповіщень</string>
+    <string name="profile_settings">Налаштування профілю</string>
+
+    <!-- Common -->
+    <string name="common_cancel">Скасувати</string>
+    <string name="common_save">Зберегти</string>
+    <string name="common_delete">Видалити</string>
+    <string name="common_edit">Редагувати</string>
+    <string name="common_loading">Завантаження...</string>
+    <string name="common_error">Помилка</string>
+    <string name="common_success">Успіх</string>
 </resources>

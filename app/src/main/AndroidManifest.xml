@@ -27,6 +27,30 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".ui.activities.RegisterActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.activities.MainActivity"
+            android:exported="true" />
+
+        <activity
+            android:name=".ui.activities.AddTransactionActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.activities.StatisticsActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.activities.AccountSettingsActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.activities.ProfileActivity"
+            android:exported="false" />
+
         <!--
             BankNotificationService — слушает уведомления MonoBank.
 

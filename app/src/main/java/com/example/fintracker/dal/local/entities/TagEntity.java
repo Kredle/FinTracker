@@ -18,5 +18,13 @@ public class TagEntity {
     public boolean isSynced = false;
     public boolean isDeleted = false;
     public String updatedAt;
-}
 
+    // Конструктор без аргументів для Room
+    public TagEntity() {
+        this.id = "";
+        this.name = "";
+        this.iconName = "";
+        this.ownerId = "";
+        this.updatedAt = "";
+    }
+}

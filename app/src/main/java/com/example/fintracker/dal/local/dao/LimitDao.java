@@ -126,4 +126,10 @@ public interface LimitDao {
     @Query("SELECT * FROM limits WHERE accountId = :accountId AND tagId = :tagId AND isDeleted = 0 ORDER BY updatedAt DESC LIMIT 1")
     @Nullable
     LimitEntity getLimitByAccountAndTagSync(@NonNull String accountId, @NonNull String tagId);
+
+    @Query("SELECT * FROM limits WHERE accountId IS NULL AND userId = :userId AND tagId IS NOT NULL AND isDeleted = 0")
+    List<LimitEntity> getCategoryLimitsByUserIdSync(@NonNull String userId);
+
+    @Query("UPDATE limits SET isDeleted = 1, updatedAt = :updatedAt WHERE id = :id")
+    void deleteLimit(@NonNull String id, @NonNull String updatedAt);
 }

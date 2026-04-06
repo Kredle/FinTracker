@@ -85,6 +85,12 @@ public class SessionManager {
     public synchronized boolean isLoggedIn() {
         return currentUser != null;
     }
+
+    /** Возвращает email текущего пользователя или null если не залогинен. */
+    @Nullable
+    public synchronized String getCurrentUserEmail() {
+        return currentUser != null ? currentUser.email : null;
+    }
 }
 
 /*

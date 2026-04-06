@@ -76,6 +76,29 @@ public class LimitRepository {
         });
     }
 
+    public void deleteLimit(@NonNull final LimitEntity limit) {
+        deleteLimit(limit, null);
+    }
+
+    public void deleteLimit(
+            @NonNull final LimitEntity limit,
+            @Nullable final DataCallback<Void> callback
+    ) {
+        executorService.execute(() -> {
+            try {
+                String updatedAt = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US).format(new java.util.Date());
+                limitDao.deleteLimit(limit.id, updatedAt);
+                if (callback != null) {
+                    callbackExecutor.execute(() -> callback.onSuccess(null));
+                }
+            } catch (Exception e) {
+                if (callback != null) {
+                    callbackExecutor.execute(() -> callback.onError(e));
+                }
+            }
+        });
+    }
+
     public LiveData<List<LimitEntity>> getLimitsByAccountId(@NonNull String accountId) {
         return limitDao.getLimitsByAccountId(accountId);
     }
@@ -86,6 +109,17 @@ public class LimitRepository {
 
     public LiveData<LimitEntity> getLimitByAccountAndTag(@NonNull String accountId, @NonNull String tagId) {
         return limitDao.getLimitByAccountAndTag(accountId, tagId);
+    }
+
+    public void getCategoryLimitsByUserId(@NonNull String userId, @NonNull DataCallback<List<LimitEntity>> callback) {
+        executorService.execute(() -> {
+            try {
+                List<LimitEntity> limits = limitDao.getCategoryLimitsByUserIdSync(userId);
+                callbackExecutor.execute(() -> callback.onSuccess(limits));
+            } catch (Exception e) {
+                callbackExecutor.execute(() -> callback.onError(e));
+            }
+        });
     }
 
     public void shutdown() {

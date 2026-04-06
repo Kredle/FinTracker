@@ -1,10 +1,107 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Material 3 Seed Color - Your brand cyan color -->
+    <color name="seed_color">#40DFFF</color>
+
+    <!-- Primary Colors (Light Theme) -->
+    <color name="primary_color">#006B7B</color>
+    <color name="on_primary">#FFFFFF</color>
+    <color name="primary_container">#ADE9FF</color>
+    <color name="on_primary_container">#001F26</color>
+
+    <!-- Secondary Colors -->
+    <color name="secondary_color">#4C6269</color>
+    <color name="on_secondary">#FFFFFF</color>
+    <color name="secondary_container">#CFE6ED</color>
+    <color name="on_secondary_container">#071E24</color>
+
+    <!-- Tertiary Colors -->
+    <color name="tertiary_color">#545D7E</color>
+    <color name="on_tertiary">#FFFFFF</color>
+    <color name="tertiary_container">#DBE1FF</color>
+    <color name="on_tertiary_container">#0F1A37</color>
+
+    <!-- Error Colors -->
+    <color name="error_color">#BA1A1A</color>
+    <color name="on_error">#FFFFFF</color>
+    <color name="error_container">#FFDAD6</color>
+    <color name="on_error_container">#410002</color>
+
+    <!-- Surface Colors (Light Theme) -->
+    <color name="surface_color">#F4FAFB</color>
+    <color name="on_surface">#191C1D</color>
+    <color name="surface_variant">#DBE4E7</color>
+    <color name="on_surface_variant">#3F484B</color>
+
+    <!-- Background Colors (Light Theme) -->
+    <color name="background_color">#F4FAFB</color>
+    <color name="on_background">#191C1D</color>
+
+    <!-- Outline Colors -->
+    <color name="outline_color">#6F797C</color>
+    <color name="outline_variant">#BFC8CB</color>
+
+    <!-- Primary Colors (Dark Theme) -->
+    <color name="primary_container_dark">#004E5B</color>
+    <color name="on_primary_container_dark">#ADE9FF</color>
+
+    <!-- Secondary Colors (Dark Theme) -->
+    <color name="secondary_container_dark">#344A51</color>
+    <color name="on_secondary_container_dark">#CFE6ED</color>
+
+    <!-- Tertiary Colors (Dark Theme) -->
+    <color name="tertiary_container_dark">#3C4565</color>
+    <color name="on_tertiary_container_dark">#DBE1FF</color>
+
+    <!-- Error Colors (Dark Theme) -->
+    <color name="error_container_dark">#93000A</color>
+    <color name="on_error_container_dark">#FFDAD6</color>
+
+    <!-- Surface Colors (Dark Theme) -->
+    <color name="surface_color_dark">#0F1415</color>
+    <color name="on_surface_dark">#E0E2E3</color>
+    <color name="surface_variant_dark">#3F484B</color>
+    <color name="on_surface_variant_dark">#BFC8CB</color>
+
+    <!-- Background Colors (Dark Theme) -->
+    <color name="background_color_dark">#0F1415</color>
+    <color name="on_background_dark">#E0E2E3</color>
+
+    <!-- Outline Colors (Dark Theme) -->
+    <color name="outline_color_dark">#899295</color>
+    <color name="outline_variant_dark">#3F484B</color>
+
+    <!-- Legacy Colors (for backward compatibility) -->
+    <color name="primary_green">#40DFFF</color>
+    <color name="primary_dark_green">#00A8CC</color>
+    <color name="primary_dark">#00A8CC</color> <!-- Added for compatibility -->
+    <color name="accent_green">#00D4FF</color>
+    <color name="background_light">#C3F9FF</color>
+
+    <!-- Neutral Colors -->
+    <color name="white">#FFFFFFFF</color>
+    <color name="black">#FF000000</color>
+    <color name="gray_light">#E0F7FF</color>
+    <color name="gray_medium">#B3E5FC</color>
+    <color name="gray_dark">#81D4FA</color>
+    <color name="text_primary">#212121</color>
+    <color name="text_secondary">#424242</color>
+    <color name="text_dark">#333333</color>
+
+    <!-- Status Colors -->
+    <color name="success_green">#4CAF50</color>
+    <color name="error_red">#F44336</color>
+    <color name="warning_orange">#FF9800</color>
+    <color name="info_blue">#2196F3</color>
+    <color name="color_selected">#E3F2FD</color>
+
+    <!-- Legacy -->
     <color name="purple_200">#FFBB86FC</color>
     <color name="purple_500">#FF6200EE</color>
     <color name="purple_700">#FF3700B3</color>
     <color name="teal_200">#FF03DAC5</color>
     <color name="teal_700">#FF018786</color>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+
+    <!-- Placeholder text color -->
+    <color name="placeholder_text">#96DBE3</color>
 </resources>

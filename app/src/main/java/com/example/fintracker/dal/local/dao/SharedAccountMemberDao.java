@@ -101,4 +101,14 @@ public interface SharedAccountMemberDao {
      */
     @Update
     void updateSharedAccountMember(@NonNull SharedAccountMemberEntity member);
+
+    /**
+     * Retrieves all account IDs where the user is an active member.
+     * Used to get shared accounts for a user.
+     *
+     * @param userId The user's unique identifier (UUID)
+     * @return List of account IDs
+     */
+    @Query("SELECT accountId FROM shared_account_members WHERE userId = :userId AND isDeleted = 0")
+    List<String> getAccountIdsForUserSync(@NonNull String userId);
 }

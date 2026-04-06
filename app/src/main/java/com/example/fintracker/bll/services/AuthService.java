@@ -1,6 +1,7 @@
 package com.example.fintracker.bll.services;
 
 import android.app.Application;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -50,7 +51,7 @@ public class AuthService {
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  РЕГИСТРАЦИЯ
+    //  РЕЄСТРАЦІЯ
     // ─────────────────────────────────────────────────────────────
 
     public void register(
@@ -59,34 +60,51 @@ public class AuthService {
             @NonNull String password,
             @NonNull AuthResult.AuthCallback callback
     ) {
+        Log.d("AuthService", "🔵 register() called for: " + email);
         executorService.execute(() -> {
             try {
+                Log.d("AuthService", "🟡 Validating registration data");
                 UserValidator.validateRegistration(email, username, password);
+                Log.d("AuthService", "🟢 Validation passed");
             } catch (IllegalArgumentException e) {
+                Log.e("AuthService", "❌ Validation failed: " + e.getMessage());
                 deliverFailure(callback, e.getMessage());
                 return;
             }
 
-            userRepository.checkIfUserExists(email, username, new DataCallback<Boolean>() {
-                @Override
-                public void onSuccess(@Nullable Boolean exists) {
-                    if (Boolean.TRUE.equals(exists)) {
-                        deliverFailure(callback, "Пользователь с таким email или именем уже существует");
-                        return;
+            try {
+                Log.d("AuthService", "🟡 Checking if user exists...");
+                Log.d("AuthService", "📧 Email: " + email + ", Username: " + username);
+                userRepository.checkIfUserExists(email, username, new DataCallback<Boolean>() {
+                    @Override
+                    public void onSuccess(@Nullable Boolean exists) {
+                        Log.d("AuthService", "🟢 checkIfUserExists callback RECEIVED - exists: " + exists);
+                        if (Boolean.TRUE.equals(exists)) {
+                            Log.e("AuthService", "❌ User already exists");
+                            deliverFailure(callback, "Користувач з такою електронною поштою або ім'ям уже існує");
+                            return;
+                        }
+                        Log.d("AuthService", "✅ User does not exist, proceeding to create...");
+                        Log.d("AuthService", "🟡 Creating and saving user...");
+                        createAndSaveUser(email, username, password, callback);
                     }
-                    createAndSaveUser(email, username, password, callback);
-                }
 
-                @Override
-                public void onError(@NonNull Throwable throwable) {
-                    deliverFailure(callback, "Ошибка проверки пользователя: " + throwable.getMessage());
-                }
-            });
+                    @Override
+                    public void onError(@NonNull Throwable throwable) {
+                        Log.e("AuthService", "❌ checkIfUserExists ERROR: " + throwable.getMessage(), throwable);
+                        deliverFailure(callback, "Помилка перевірки користувача: " + throwable.getMessage());
+                    }
+                });
+                Log.d("AuthService", "⏳ checkIfUserExists called, waiting for callback...");
+            } catch (Exception e) {
+                Log.e("AuthService", "❌ Exception in register: " + e.getMessage(), e);
+                deliverFailure(callback, "Помилка бази даних: " + e.getMessage());
+            }
         });
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  ВХОД
+    //  ВХІД
     // ─────────────────────────────────────────────────────────────
 
     public void login(
@@ -96,7 +114,7 @@ public class AuthService {
     ) {
         executorService.execute(() -> {
             if (login.trim().isEmpty()) {
-                deliverFailure(callback, "Email или имя пользователя не может быть пустым");
+                deliverFailure(callback, "Електронна пошта або ім'я користувача не можуть бути пустими");
                 return;
             }
             try {
@@ -107,31 +125,40 @@ public class AuthService {
             }
 
             String hashedPassword = PasswordHasher.hash(password);
+            Log.d("AuthService", "Login attempt: login='" + login.trim() + "', hashedPassword='" + hashedPassword + "'");
 
-            userRepository.getUserByEmailOrName(login.trim(), hashedPassword,
-                    new DataCallback<UserEntity>() {
-                        @Override
-                        public void onSuccess(@Nullable UserEntity user) {
-                            if (user == null) {
-                                deliverFailure(callback, "Неверный логин или пароль");
-                                return;
+            try {
+                userRepository.getUserByEmailOrName(login.trim(), hashedPassword,
+                        new DataCallback<UserEntity>() {
+                            @Override
+                            public void onSuccess(@Nullable UserEntity user) {
+                                if (user == null) {
+                                    Log.w("AuthService", "Login failed: user not found for login='" + login.trim() + "'");
+                                    deliverFailure(callback, "Невірний логін або пароль");
+                                    return;
+                                }
+                                Log.d("AuthService", "Login successful for user: " + user.name + " (" + user.email + ")");
+                                // Сохраняем в память и на диск
+                                SessionManager.getInstance().login(user);
+                                sessionStorage.saveUserId(user.id);  // ← новое
+                                deliverSuccess(callback, user);
                             }
-                            // Сохраняем в память и на диск
-                            SessionManager.getInstance().login(user);
-                            sessionStorage.saveUserId(user.id);  // ← новое
-                            deliverSuccess(callback, user);
-                        }
 
-                        @Override
-                        public void onError(@NonNull Throwable throwable) {
-                            deliverFailure(callback, "Ошибка входа: " + throwable.getMessage());
-                        }
-                    });
+                            @Override
+                            public void onError(@NonNull Throwable throwable) {
+                                Log.e("AuthService", "Login database error", throwable);
+                                deliverFailure(callback, "Помилка входу: " + throwable.getMessage());
+                            }
+                        });
+            } catch (Exception e) {
+                Log.e("AuthService", "Login exception", e);
+                deliverFailure(callback, "Помилка бази даних: " + e.getMessage());
+            }
         });
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  ВЫХОД
+    //  ВИХІД
     // ─────────────────────────────────────────────────────────────
 
     public void logout() {
@@ -149,8 +176,11 @@ public class AuthService {
             String password,
             AuthResult.AuthCallback callback
     ) {
+        Log.d("AuthService", "🟡 createAndSaveUser() started");
         String hashedPassword = PasswordHasher.hash(password);
         String now = isoNow();
+
+        Log.d("AuthService", "Creating user: email='" + email.trim() + "', username='" + username.trim() + "'");
 
         UserEntity user = new UserEntity();
         user.id = UUID.randomUUID().toString();
@@ -159,32 +189,45 @@ public class AuthService {
         user.password = hashedPassword;
         user.hourlyRate = 0.0;
         user.isBankSyncEnabled = false;
+        user.generalLimit = 0.0;
         user.isSynced = false;
         user.isDeleted = false;
         user.updatedAt = now;
 
+        Log.d("AuthService", "🟡 Calling userRepository.insertUser()");
         userRepository.insertUser(user, new DataCallback<Void>() {
             @Override
             public void onSuccess(@Nullable Void data) {
-                // Сохраняем в память и на диск
+                Log.d("AuthService", "🟢 User created successfully in database: " + user.name);
                 SessionManager.getInstance().login(user);
-                sessionStorage.saveUserId(user.id);  // ← новое
+                sessionStorage.saveUserId(user.id);
+                Log.d("AuthService", "🟢 SessionManager updated, calling deliverSuccess");
                 deliverSuccess(callback, user);
             }
 
             @Override
             public void onError(@NonNull Throwable throwable) {
+                Log.e("AuthService", "❌ Failed to create user: " + throwable.getMessage(), throwable);
                 deliverFailure(callback, "Ошибка сохранения пользователя: " + throwable.getMessage());
             }
         });
+        Log.d("AuthService", "🟡 insertUser() callback registered");
     }
 
     private void deliverSuccess(AuthResult.AuthCallback callback, UserEntity user) {
-        mainThreadExecutor.execute(() -> callback.onResult(AuthResult.success(user)));
+        Log.d("AuthService", "🟢 deliverSuccess() - executing callback on main thread");
+        mainThreadExecutor.execute(() -> {
+            Log.d("AuthService", "✅ SUCCESS CALLBACK DELIVERED to RegisterActivity");
+            callback.onResult(AuthResult.success(user));
+        });
     }
 
     private void deliverFailure(AuthResult.AuthCallback callback, String message) {
-        mainThreadExecutor.execute(() -> callback.onResult(AuthResult.failure(message)));
+        Log.d("AuthService", "❌ deliverFailure() - executing callback: " + message);
+        mainThreadExecutor.execute(() -> {
+            Log.d("AuthService", "❌ FAILURE CALLBACK DELIVERED to RegisterActivity: " + message);
+            callback.onResult(AuthResult.failure(message));
+        });
     }
 
     private static String isoNow() {

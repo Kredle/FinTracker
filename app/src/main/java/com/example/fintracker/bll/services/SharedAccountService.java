@@ -308,6 +308,80 @@ public class SharedAccountService {
     }
 
     // ─────────────────────────────────────────────────────────────
+    //  ПОВЫШЕНИЕ УЧАСТНИКА ДО АДМИНА
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Повышает участника совместного счёта до роли ADMIN.
+     * Доступно только для ADMIN счёта.
+     *
+     * @param accountId    ID совместного счёта
+     * @param targetUserId ID пользователя, которого нужно повысить
+     * @param callback     Результат операции
+     */
+    public void promoteToAdmin(
+            @NonNull String accountId,
+            @NonNull String targetUserId,
+            @NonNull SharedAccountCallback callback
+    ) {
+        String currentUserId;
+        try {
+            currentUserId = SessionManager.getInstance().requireUserId();
+        } catch (IllegalStateException e) {
+            deliverFailure(callback, "Необходимо войти в аккаунт");
+            return;
+        }
+
+        final String currentUserIdFinal = currentUserId;
+
+        executorService.execute(() -> {
+            AccountEntity account = database.accountDao().getAccountByIdSync(accountId);
+            if (account == null) {
+                deliverFailure(callback, "Счёт не найден");
+                return;
+            }
+            if (!account.isShared) {
+                deliverFailure(callback, "Счёт не является совместным");
+                return;
+            }
+            if (!isAdmin(accountId, currentUserIdFinal)) {
+                deliverFailure(callback, "Только администратор может повышать участников");
+                return;
+            }
+
+            // Проверить, что целевой пользователь является участником
+            SharedAccountMemberEntity member = database.sharedAccountMemberDao().getMemberSync(accountId, targetUserId);
+            if (member == null) {
+                deliverFailure(callback, "Пользователь не является участником этого счёта");
+                return;
+            }
+
+            // Проверить, что он ещё не админ
+            if (ROLE_ADMIN.equals(member.role)) {
+                deliverFailure(callback, "Пользователь уже является администратором");
+                return;
+            }
+
+            // Обновить роль
+            memberRepository.updateMemberRole(accountId, targetUserId, ROLE_ADMIN, new DataCallback<Integer>() {
+                @Override
+                public void onSuccess(@Nullable Integer rowsAffected) {
+                    if (rowsAffected == null || rowsAffected == 0) {
+                        deliverFailure(callback, "Не удалось обновить роль участника");
+                    } else {
+                        deliverSuccess(callback, SharedAccountResult.empty());
+                    }
+                }
+
+                @Override
+                public void onError(@NonNull Throwable throwable) {
+                    deliverFailure(callback, "Ошибка повышения участника: " + throwable.getMessage());
+                }
+            });
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────
     //  УДАЛЕНИЕ СОВМЕСТНОГО СЧЁТА
     // ─────────────────────────────────────────────────────────────
 
@@ -578,3 +652,4 @@ public class SharedAccountService {
         void onResult(@NonNull SharedAccountResult result);
     }
 }
+

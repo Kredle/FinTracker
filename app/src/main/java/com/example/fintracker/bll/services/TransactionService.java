@@ -11,6 +11,9 @@ import androidx.sqlite.db.SupportSQLiteQuery;
 import com.example.fintracker.bll.session.SessionManager;
 import com.example.fintracker.bll.validators.TransactionValidator;
 import com.example.fintracker.dal.local.database.AppDatabase;
+import com.example.fintracker.dal.local.entities.AccountEntity;
+import com.example.fintracker.dal.local.entities.SharedAccountMemberEntity;
+import com.example.fintracker.dal.local.entities.TagEntity;
 import com.example.fintracker.dal.local.entities.TransactionEntity;
 import com.example.fintracker.dal.repositories.DataCallback;
 import com.example.fintracker.dal.repositories.TransactionRepository;
@@ -95,7 +98,7 @@ public class TransactionService {
      * @param title       Название (1–50 символов, обязательно)
      * @param amount      Сумма (> 0, обязательно)
      * @param tagId       UUID тега (null — без тега)
-     * @param description Описание (null — без описания)
+     * @param description Oписание (null — без описания)
      * @param callback    Результат операции
      */
     public void addTransaction(
@@ -132,23 +135,58 @@ public class TransactionService {
             }
 
             // Проверяем, что счёт существует и не удалён
-            if (database.accountDao().getAccountByIdSync(accountId) == null) {
+            AccountEntity account = database.accountDao().getAccountByIdSync(accountId);
+            if (account == null) {
                 deliverFailure(callback, "Счёт не найден");
                 return;
             }
 
-            // Проверяем тег, если передан
-            if (tagId != null && database.tagDao().getTagByIdSync(tagId) == null) {
-                deliverFailure(callback, "Тег не найден");
-                return;
+            // Проверяем доступ к счёту
+            if (!account.isShared) {
+                if (!account.ownerId.equals(userIdFinal)) {
+                    deliverFailure(callback, "Нет доступа к счёту");
+                    return;
+                }
+            } else {
+                // Для совместного счёта проверяем, что пользователь является участником
+                SharedAccountMemberEntity member = database.sharedAccountMemberDao().getMemberSync(accountId, userIdFinal);
+                if (member == null) {
+                    deliverFailure(callback, "Нет доступа к совместному счёту");
+                    return;
+                }
             }
 
+            // Обрабатываем тег: если передан, находим существующий или создаём новый
+            String finalTagId = null;
             String now = isoNow();
+            if (tagId != null) {
+                TagEntity existingTag = database.tagDao().getTagByNameAndOwnerSync(tagId, userIdFinal);
+                if (existingTag != null) {
+                    finalTagId = existingTag.id;
+                } else {
+                    // Создаём новый тег
+                    TagEntity newTag = new TagEntity();
+                    newTag.id = UUID.randomUUID().toString();
+                    newTag.name = tagId;
+                    newTag.ownerId = userIdFinal;
+                    newTag.updatedAt = now;
+                    newTag.isSynced = false;
+                    newTag.isDeleted = false;
+                    try {
+                        database.tagDao().insertTag(newTag);
+                        finalTagId = newTag.id;
+                    } catch (Exception e) {
+                        deliverFailure(callback, "Ошибка создания тега: " + e.getMessage());
+                        return;
+                    }
+                }
+            }
+
             TransactionEntity tx = new TransactionEntity();
             tx.id          = UUID.randomUUID().toString();
             tx.accountId   = accountId;
             tx.userId      = userIdFinal;
-            tx.tagId       = tagId;
+            tx.tagId       = finalTagId;
             tx.amount      = amount;
             tx.type        = type;
             tx.title       = title.trim();
@@ -548,5 +586,37 @@ public class TransactionService {
 
     public interface TransactionCallback {
         void onResult(@NonNull TransactionResult result);
+    }
+
+    /**
+     * Сохраняет транзакцию из TransactionEntity.
+     * Выполняет те же проверки доступа, что и addTransaction.
+     *
+     * @param transaction Транзакция для сохранения
+     * @param callback    Результат операции
+     */
+    public void saveTransaction(
+            @NonNull TransactionEntity transaction,
+            @NonNull DataCallback<Void> callback
+    ) {
+        // Используем addTransaction с параметрами из entity
+        addTransaction(
+                transaction.accountId,
+                transaction.type,
+                transaction.title,
+                transaction.amount,
+                transaction.tagId,
+                transaction.description,
+                new TransactionCallback() {
+                    @Override
+                    public void onResult(@NonNull TransactionResult result) {
+                        if (result.isSuccess()) {
+                            callback.onSuccess(null);
+                        } else {
+                            callback.onError(new Exception(result.getErrorMessage()));
+                        }
+                    }
+                }
+        );
     }
 }

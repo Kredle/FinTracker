@@ -10,6 +10,7 @@ import com.example.fintracker.dal.local.dao.TransactionDao;
 import com.example.fintracker.dal.local.database.AppDatabase;
 import com.example.fintracker.dal.local.entities.TransactionEntity;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -102,6 +103,44 @@ public class TransactionRepository {
                 if (callback != null) {
                     callbackExecutor.execute(() -> callback.onError(e));
                 }
+            }
+        });
+    }
+
+    public void getTransactionsByUserId(@NonNull Application application, @NonNull String userId, @NonNull DataCallback<List<TransactionEntity>> callback) {
+        executorService.execute(() -> {
+            try {
+                // First get all account IDs for the user
+                List<String> accountIds = AppDatabase.getInstance(application).accountDao().getAccountIdsByUserIdSync(userId);
+                if (accountIds.isEmpty()) {
+                    callbackExecutor.execute(() -> callback.onSuccess(new ArrayList<>()));
+                    return;
+                }
+
+                // Then get transactions for these accounts
+                List<TransactionEntity> transactions = transactionDao.getTransactionsByAccountIdsSync(accountIds);
+                callbackExecutor.execute(() -> callback.onSuccess(transactions));
+            } catch (Exception e) {
+                callbackExecutor.execute(() -> callback.onError(e));
+            }
+        });
+    }
+
+    public void getAccountBalance(@NonNull String accountId, @NonNull DataCallback<Double> callback) {
+        executorService.execute(() -> {
+            try {
+                List<TransactionEntity> transactions = transactionDao.getTransactionsByAccountIdSync(accountId);
+                final double[] balance = {0.0};
+                for (TransactionEntity transaction : transactions) {
+                    if ("INCOME".equals(transaction.type)) {
+                        balance[0] += transaction.amount;
+                    } else if ("EXPENSE".equals(transaction.type)) {
+                        balance[0] -= transaction.amount;
+                    }
+                }
+                callbackExecutor.execute(() -> callback.onSuccess(balance[0]));
+            } catch (Exception e) {
+                callbackExecutor.execute(() -> callback.onError(e));
             }
         });
     }

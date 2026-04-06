@@ -18,10 +18,10 @@ public class UserValidator {
      */
     public static boolean isValidEmail(String email) {
         if (email == null || email.trim().isEmpty()) {
-            throw new IllegalArgumentException("Email cannot be null or empty");
+            throw new IllegalArgumentException("Електронна пошта не може бути пустою");
         }
         if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            throw new IllegalArgumentException("Email format is invalid. Expected format: user@example.com");
+            throw new IllegalArgumentException("Невірний формат електронної пошти. Очікуваний формат: користувач@приклад.com");
         }
         return true;
     }
@@ -37,24 +37,24 @@ public class UserValidator {
      */
     public static boolean isValidUsername(String username) {
         if (username == null) {
-            throw new IllegalArgumentException("Username cannot be null");
+            throw new IllegalArgumentException("Ім'я користувача не може бути пустим");
         }
 
         // Reject usernames with leading/trailing whitespace
         if (!username.equals(username.trim())) {
-            throw new IllegalArgumentException("Username cannot have leading or trailing whitespace");
+            throw new IllegalArgumentException("Ім'я користувача не може мати пробіли на початку або наприкінці");
         }
 
         if (username.isEmpty()) {
-            throw new IllegalArgumentException("Username cannot be empty");
+            throw new IllegalArgumentException("Ім'я користувача не може бути пустим");
         }
 
         // Check length constraints on the (already-trimmed) username
         if (username.length() < 3) {
-            throw new IllegalArgumentException("Username must be at least 3 characters");
+            throw new IllegalArgumentException("Ім'я користувача має бути принаймні 3 символи");
         }
         if (username.length() > 25) {
-            throw new IllegalArgumentException("Username must not exceed 25 characters");
+            throw new IllegalArgumentException("Ім'я користувача не повинно перевищувати 25 символів");
         }
         return true;
     }
@@ -69,13 +69,13 @@ public class UserValidator {
      */
     public static boolean isValidPassword(String password) {
         if (password == null) {
-            throw new IllegalArgumentException("Password cannot be null");
+            throw new IllegalArgumentException("Пароль не може бути пустим");
         }
         if (password.isEmpty()) {
-            throw new IllegalArgumentException("Password cannot be empty");
+            throw new IllegalArgumentException("Пароль не може бути пустим");
         }
         if (password.length() < 6) {
-            throw new IllegalArgumentException("Password must be at least 6 characters");
+            throw new IllegalArgumentException("Пароль має бути принаймні 6 символів");
         }
         return true;
     }

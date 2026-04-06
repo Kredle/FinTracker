@@ -30,6 +30,16 @@ public interface UserDao {
     void insertUser(@NonNull UserEntity user);
 
     /**
+     * Upserts (inserts or updates) a user into the database.
+     * Used when caching user from Firestore to avoid UNIQUE constraint violations.
+     * If user exists, updates it; otherwise inserts new user.
+     *
+     * @param user The UserEntity to insert or update
+     */
+    @Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE)
+    void upsertUser(@NonNull UserEntity user);
+
+    /**
      * Retrieves a user by email or username and password.
      * Used for login functionality - user can login with either email or username.
      *
@@ -111,4 +121,15 @@ public interface UserDao {
      */
     @Update
     void updateUser(@NonNull UserEntity user);
+
+    /**
+     * Retrieves a user by username synchronously.
+     * Useful for finding users by name for shared accounts.
+     *
+     * @param username The username to search for
+     * @return UserEntity if found, null otherwise
+     */
+    @Query("SELECT * FROM users WHERE name = :username LIMIT 1")
+    @Nullable
+    UserEntity getUserByNameSync(@NonNull String username);
 }

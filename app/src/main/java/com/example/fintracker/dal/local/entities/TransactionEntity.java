@@ -24,4 +24,19 @@ public class TransactionEntity {
     public boolean isSynced = false;
     public boolean isDeleted = false;
     public String updatedAt;
+
+    // Конструктор без аргументів для Room
+    public TransactionEntity() {
+        this.id = "";
+        this.accountId = "";
+        this.userId = "";
+        this.tagId = null;
+        this.amount = 0.0;
+        this.type = "";
+        this.title = "";
+        this.description = null;
+        this.timestamp = "";
+        this.bankMessageHash = null;
+        this.updatedAt = "";
+    }
 }

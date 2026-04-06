@@ -18,5 +18,13 @@ public class SharedAccountMemberEntity {
     public boolean isSynced = false;
     public boolean isDeleted = false;
     public String updatedAt;
-}
 
+    // Конструктор без аргументів для Room
+    public SharedAccountMemberEntity() {
+        this.id = "";
+        this.accountId = "";
+        this.userId = "";
+        this.role = "";
+        this.updatedAt = "";
+    }
+}

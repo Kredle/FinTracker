@@ -78,4 +78,7 @@ public interface TransactionDao {
 
     @Query("SELECT * FROM transactions WHERE isSynced = 0")
     List<TransactionEntity> getUnsyncedTransactions();
+
+    @Query("SELECT * FROM transactions WHERE accountId IN (:accountIds) AND isDeleted = 0 ORDER BY timestamp DESC")
+    List<TransactionEntity> getTransactionsByAccountIdsSync(@NonNull List<String> accountIds);
 }

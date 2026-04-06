@@ -10,7 +10,6 @@ import com.example.fintracker.dal.local.entities.UserEntity;
 import com.example.fintracker.remote.firebase.SyncScheduler;
 
 import java.util.concurrent.Executors;
-import java.util.concurrent.ExecutorService;
 
 public class FinTrackerApplication extends Application {
 
@@ -19,49 +18,121 @@ public class FinTrackerApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        Log.d(TAG, "FinTrackerApplication onCreate started");
 
-        // Восстанавливаем сессию из SharedPreferences
-        restoreSession();
+        try {
+            // AGGRESSIVE: Always try to reset database on first error, then retry multiple times
+            boolean dbInitialized = false;
+            Exception lastError = null;
+            
+            for (int attempt = 1; attempt <= 5; attempt++) {
+                try {
+                    Log.d(TAG, "🔄 Database init attempt " + attempt + "/5");
+                    AppDatabase.getInstance(this);
+                    Log.d(TAG, "✅ Database initialized successfully on attempt " + attempt);
+                    dbInitialized = true;
+                    break;
+                } catch (Exception dbError) {
+                    lastError = dbError;
+                    Log.e(TAG, "❌ Database init attempt " + attempt + " failed: " + dbError.getClass().getSimpleName());
+                    
+                    // Only reset on actual integrity errors
+                    if (dbError.getMessage() != null && 
+                        dbError.getMessage().contains("cannot verify data integrity")) {
+                        
+                        Log.w(TAG, "⚠️  Integrity error detected! Performing emergency reset... (attempt " + attempt + ")");
+                        try {
+                            AppDatabase.resetDatabase(this);
+                            // Wait before retry
+                            try {
+                                Thread.sleep(500);
+                            } catch (InterruptedException ignored) {}
+                            Log.d(TAG, "✅ Emergency reset completed, retrying...");
+                        } catch (Exception resetError) {
+                            Log.e(TAG, "❌ Reset failed: " + resetError.getMessage());
+                            if (attempt < 5) {
+                                try {
+                                    Thread.sleep(500);
+                                } catch (InterruptedException ignored) {}
+                            }
+                        }
+                    } else {
+                        Log.e(TAG, "❌ Non-integrity error: " + dbError.getClass().getSimpleName());
+                        if (attempt < 5) {
+                            try {
+                                Thread.sleep(300);
+                            } catch (InterruptedException ignored) {}
+                        }
+                    }
+                }
+            }
+            
+            if (!dbInitialized) {
+                Log.e(TAG, "❌ *** CRITICAL: Database failed to initialize after 5 attempts ***");
+                Log.e(TAG, "Last error: " + (lastError != null ? lastError.getMessage() : "unknown"));
+                // Still continue - the app might work with lazy initialization
+            }
+            
+            // Restore session from SharedPreferences
+            restoreSession();
 
-        // Планируем Firebase sync
-        SyncScheduler.scheduleSync(this);
+            // Schedule Firebase sync
+            try {
+                SyncScheduler.scheduleSync(this);
+                Log.d(TAG, "Firebase sync scheduled successfully");
+            } catch (Exception e) {
+                Log.e(TAG, "Warning during Firebase sync scheduling: " + e.getMessage());
+            }
+            Log.d(TAG, "FinTrackerApplication onCreate completed successfully");
+        } catch (Exception e) {
+            Log.e(TAG, "Critical error in Application.onCreate(): " + e.getMessage(), e);
+        }
     }
 
     /**
-     * Проверяет SharedPreferences: если userId сохранён — загружает юзера из
-     * Room и устанавливает в SessionManager. Всё выполняется в фоновом потоке,
-     * т.к. Room нельзя использовать на главном потоке.
+     * Check SharedPreferences: if userId is saved - load user from Room
+     * and set in SessionManager. All done in background thread
+     * because Room cannot be used on main thread.
      */
+    @SuppressWarnings("resource")  // ExecutorService doesn't need closing here
     private void restoreSession() {
-        SessionStorage sessionStorage = new SessionStorage(this);
-        String savedUserId = sessionStorage.getSavedUserId();
+        try {
+            SessionStorage sessionStorage = new SessionStorage(this);
+            String savedUserId = sessionStorage.getSavedUserId();
 
-        if (savedUserId == null) {
-            Log.d(TAG, "Нет сохранённой сессии — пользователь не залогинен");
-            return;
-        }
-
-        Log.d(TAG, "Найден сохранённый userId: " + savedUserId + " — восстанавливаем сессию...");
-
-        // Загружаем юзера из базы в фоне
-        public class FinTrackerApplication extends Application {
-
-        Log.d(TAG, "Найден сохранённый userId: " + savedUserId + " — восстанавливаем сессию...");
-
-        // Загружаем юзера из базы в фоне
-        Executors.newSingleThreadExecutor().execute(() -> {
-            UserEntity user = AppDatabase.getInstance(this)
-                    .userDao()
-                    .getUserByIdSync(savedUserId);
-
-            if (user != null && !user.isDeleted) {
-                SessionManager.getInstance().login(user);
-                Log.d(TAG, "✅ Сессия восстановлена: " + user.name + " (" + user.email + ")");
-            } else {
-                // Юзер удалён или не найден — очищаем устаревшие данные
-                sessionStorage.clear();
-                Log.w(TAG, "⚠ Сохранённый userId не найден в базе — сессия сброшена");
+            if (savedUserId == null) {
+                Log.d(TAG, "No saved session - user not logged in");
+                return;
             }
-        });
+
+            Log.d(TAG, "Found saved userId: " + savedUserId + " - restoring session...");
+
+            // Load user from database in background
+            Executors.newSingleThreadExecutor().execute(() -> {
+                try {
+                    Log.d(TAG, "Loading database for session restore...");
+                    AppDatabase db = AppDatabase.getInstance(FinTrackerApplication.this);
+                    Log.d(TAG, "Database initialized successfully");
+                    
+                    UserEntity user = db.userDao().getUserByIdSync(savedUserId);
+
+                    if (user != null && !user.isDeleted) {
+                        SessionManager.getInstance().login(user);
+                        Log.d(TAG, "Session restored: " + user.name + " (" + user.email + ")");
+                    } else {
+                        sessionStorage.clear();
+                        Log.w(TAG, "Saved userId not found in database - session cleared");
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "ERROR during session restore: " + e.getClass().getName() + " - " + e.getMessage(), e);
+                    for (StackTraceElement ste : e.getStackTrace()) {
+                        Log.e(TAG, "  at " + ste.toString());
+                    }
+                    sessionStorage.clear();
+                }
+            });
+        } catch (Exception e) {
+            Log.e(TAG, "Error in restoreSession: " + e.getMessage(), e);
+        }
     }
 }

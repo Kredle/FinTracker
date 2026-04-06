@@ -5,9 +5,11 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 
 import com.example.fintracker.dal.local.entities.AccountEntity;
+import com.example.fintracker.dal.local.entities.AccountInvitationEntity;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -53,5 +55,76 @@ public class FirestoreManager {
                     Log.e(TAG, "Error message: " + e.getMessage());
                 });
     }
-}
 
+    /**
+     * Syncs an account invitation to Cloud Firestore.
+     *
+     * @param invitation The AccountInvitationEntity to sync
+     */
+    public void syncInvitationToCloud(@NonNull AccountInvitationEntity invitation) {
+        Map<String, Object> invitationData = new HashMap<>();
+        invitationData.put("id", invitation.id);
+        invitationData.put("accountId", invitation.accountId);
+        invitationData.put("fromUserId", invitation.fromUserId);
+        invitationData.put("toUserEmail", invitation.toUserEmail);
+        invitationData.put("status", invitation.status);
+        invitationData.put("createdAt", invitation.createdAt);
+        invitationData.put("respondedAt", invitation.respondedAt);
+        invitationData.put("isSynced", invitation.isSynced);
+        invitationData.put("isDeleted", invitation.isDeleted);
+        invitationData.put("updatedAt", invitation.updatedAt);
+
+        firestore.collection("account_invitations")
+                .document(invitation.id)
+                .set(invitationData)
+                .addOnSuccessListener(aVoid -> {
+                    Log.d(TAG, "SUCCESS: Invitation synced to cloud!");
+                    Log.d(TAG, "Invitation ID: " + invitation.id);
+                    Log.d(TAG, "To Email: " + invitation.toUserEmail);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "FAILED: Could not sync invitation to cloud", e);
+                    Log.e(TAG, "Error message: " + e.getMessage());
+                });
+    }
+
+    /**
+     * Fetches pending invitations for a user from Cloud Firestore.
+     *
+     * @param email The user's email
+     * @param callback Callback with list of invitations
+     */
+    public void getPendingInvitationsForUser(String email, com.example.fintracker.bll.services.AccountInvitationService.Callback<List<AccountInvitationEntity>> callback) {
+        firestore.collection("account_invitations")
+                .whereEqualTo("toUserEmail", email)
+                .whereEqualTo("status", "PENDING")
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<AccountInvitationEntity> invitations = new java.util.ArrayList<>();
+                    for (com.google.firebase.firestore.DocumentSnapshot doc : queryDocumentSnapshots.getDocuments()) {
+                        AccountInvitationEntity invitation = new AccountInvitationEntity();
+                        invitation.id = doc.getString("id");
+                        invitation.accountId = doc.getString("accountId");
+                        invitation.fromUserId = doc.getString("fromUserId");
+                        invitation.toUserEmail = doc.getString("toUserEmail");
+                        invitation.status = doc.getString("status");
+                        invitation.createdAt = doc.getString("createdAt");
+                        invitation.respondedAt = doc.getString("respondedAt");
+                        invitation.isSynced = doc.getBoolean("isSynced") != null ? doc.getBoolean("isSynced") : false;
+                        invitation.isDeleted = doc.getBoolean("isDeleted") != null ? doc.getBoolean("isDeleted") : false;
+                        invitation.updatedAt = doc.getString("updatedAt");
+                        invitations.add(invitation);
+                    }
+                    Log.d(TAG, "Fetched " + invitations.size() + " pending invitations for " + email);
+                    if (callback != null) {
+                        callback.onSuccess(invitations);
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "FAILED: Could not fetch invitations from cloud", e);
+                    if (callback != null) {
+                        callback.onError(e.getMessage());
+                    }
+                });
+    }
+}

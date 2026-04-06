@@ -1,16 +1,23 @@
 package com.example.fintracker.ui.activities;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SwitchCompat;
 
+import com.example.fintracker.R;
+import com.example.fintracker.bll.services.AccountInvitationService;
 import com.example.fintracker.bll.services.AuthService;
 import com.example.fintracker.bll.session.SessionManager;
 import com.example.fintracker.dal.local.database.AppDatabase;
@@ -45,6 +52,12 @@ import java.util.UUID;
 public class LoginActivity extends AppCompatActivity {
 
     private static final String TAG = "AUTH_TEST";
+    
+    // UI Components
+    private EditText loginEmail;
+    private EditText loginPassword;
+    private Button loginButton;
+    private Button registerButton;
 
     // ── Данные для теста ──────────────────────────────
     private static final String TEST_EMAIL    = "test@example.com";
@@ -55,15 +68,137 @@ public class LoginActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            if (SessionManager.getInstance().isLoggedIn()) {
-                Log.d(TAG, "Привет снова, " + SessionManager.getInstance().getCurrentUser().name);
-            } else {
-                Log.d(TAG, "Нужен логин");
+        Log.d(TAG, "LoginActivity onCreate started");
+        try {
+            setContentView(R.layout.activity_login);
+            Log.d(TAG, "LoginActivity setContentView successful");
+            
+            // Initialize UI components
+            initializeViews();
+            setupListeners();
+            
+            Log.d(TAG, "LoginActivity initialization completed - user must login manually");
+            // REMOVED: Automatic login check - users MUST login or register manually
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Critical error in LoginActivity onCreate: " + e.getMessage(), e);
+            Toast.makeText(this, "Критична помилка при завантаженні: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+    
+    /**
+     * Initialize UI components from layout
+     */
+    private void initializeViews() {
+        try {
+            loginEmail = findViewById(R.id.login_email);
+            loginPassword = findViewById(R.id.login_password);
+            loginButton = findViewById(R.id.login_button);
+            registerButton = findViewById(R.id.register_button);
+            
+            if (loginEmail == null || loginPassword == null || loginButton == null || registerButton == null) {
+                Log.e(TAG, "❌ Деякі UI елементи не знайдені в layout!");
+                Toast.makeText(this, "Помилка при завантаженні UI", Toast.LENGTH_LONG).show();
             }
-        }, 500);
-
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Ошибка при инициализации UI компонентів: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Setup event listeners for buttons
+     */
+    private void setupListeners() {
+        try {
+            if (loginButton != null) {
+                loginButton.setOnClickListener(v -> performLogin());
+            }
+            if (registerButton != null) {
+                registerButton.setOnClickListener(v -> navigateToRegister());
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Ошибка при установке слушателей: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Perform user login
+     */
+    private void performLogin() {
+        try {
+            if (loginEmail == null || loginPassword == null) {
+                Toast.makeText(this, "UI не ініціалізовано", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            String email = loginEmail.getText().toString().trim();
+            String password = loginPassword.getText().toString().trim();
+            
+            if (email.isEmpty() || password.isEmpty()) {
+                Toast.makeText(this, "Будь ласка, заповніть усі поля", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            // Show loading state
+            loginButton.setEnabled(false);
+            loginButton.setText("Вхід...");
+            
+            AuthService authService = new AuthService(getApplication());
+            authService.login(email, password, loginResult -> {
+                // Reset button state
+                runOnUiThread(() -> {
+                    loginButton.setEnabled(true);
+                    loginButton.setText("Увійти");
+                });
+                
+                if (loginResult.isSuccess()) {
+                    Log.d(TAG, "✅ Вхід успішний!");
+                    // Sync invitations from cloud
+                    AccountInvitationService invitationService = new AccountInvitationService(AppDatabase.getInstance(getApplication()).accountInvitationDao());
+                    invitationService.syncInvitationsFromCloud(email, new AccountInvitationService.Callback<Void>() {
+                        @Override
+                        public void onSuccess(Void data) {
+                            Log.d(TAG, "Invitations synced from cloud");
+                        }
+                        @Override
+                        public void onError(String error) {
+                            Log.e(TAG, "Failed to sync invitations: " + error);
+                        }
+                    });
+                    navigateToHome();
+                } else {
+                    runOnUiThread(() -> 
+                        Toast.makeText(LoginActivity.this, 
+                            "❌ Помилка входу: " + loginResult.getErrorMessage(), 
+                            Toast.LENGTH_LONG).show()
+                    );
+                }
+            });
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Помилка при вході: " + e.getMessage(), e);
+            // Reset button state on error
+            runOnUiThread(() -> {
+                loginButton.setEnabled(true);
+                loginButton.setText("Увійти");
+                Toast.makeText(this, "Помилка при вході: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            });
+        }
+    }
+    
+    /**
+     * Navigate to registration screen
+     */
+    private void navigateToRegister() {
+        Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
+        startActivity(intent);
+    }
+    
+    /**
+     * Navigate to home screen after successful login
+     */
+    private void navigateToHome() {
+        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+        startActivity(intent);
+        finish();
     }
 
     /**
@@ -78,19 +213,19 @@ public class LoginActivity extends AppCompatActivity {
      */
 
     private void testLogin(){
-        Log.d(TAG, "▶ Логин: " + TEST_EMAIL + " / " + TEST_USERNAME);
+        Log.d(TAG, "▶ Вхід: " + TEST_EMAIL + " / " + TEST_USERNAME);
         AuthService authService = new AuthService(getApplication());
         authService.login(TEST_EMAIL, TEST_PASSWORD, loginResult -> {
 
             if (loginResult.isSuccess()) {
-                Log.d(TAG, "✅ Вход успешен!");
-                Log.d(TAG, "   Залогинен: " + loginResult.getUser().name);
+                Log.d(TAG, "✅ Вхід успішний!");
+                Log.d(TAG, "   Залогінено: " + loginResult.getUser().name);
                 Log.d(TAG, "   SessionManager.isLoggedIn() = "
                         + SessionManager.getInstance().isLoggedIn());
                 Log.d(TAG, "   SessionManager.getCurrentUserId() = "
                         + SessionManager.getInstance().getCurrentUserId());
             } else {
-                Log.e(TAG, "❌ Вход не удался: " + loginResult.getErrorMessage());
+                Log.e(TAG, "❌ Вхід не вдався: " + loginResult.getErrorMessage());
             }
         });
     }
@@ -187,4 +322,3 @@ public class LoginActivity extends AppCompatActivity {
         // The sync happens automatically in the background via WorkManager
     }
 }
-

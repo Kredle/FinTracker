@@ -20,11 +20,12 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Room schema export configuration for AutoMigrations
+        // Room: Disable schema export to prevent hash verification conflicts
+        // Use fallbackToDestructiveMigration() instead for better compatibility
         javaCompileOptions {
             annotationProcessorOptions {
                 arguments += mapOf(
-                    "room.schemaLocation" to "$projectDir/schemas"
+                    "room.incremental" to "true"
                 )
             }
         }
@@ -57,6 +58,13 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.work.runtime)
     implementation(libs.firebase.database)
+    
+    // MPAndroidChart для графіків
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+    
+    // ConstraintLayout для кращих layout'ів
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    
     testImplementation(libs.junit)
     testImplementation(libs.mockito.core)
     androidTestImplementation(libs.ext.junit)

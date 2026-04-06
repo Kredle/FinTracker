@@ -11,6 +11,7 @@ import com.example.fintracker.bll.validators.AccountValidator;
 import com.example.fintracker.dal.local.database.AppDatabase;
 import com.example.fintracker.dal.local.entities.AccountEntity;
 import com.example.fintracker.dal.local.entities.TransactionEntity;
+import com.example.fintracker.dal.local.entities.UserEntity;
 import com.example.fintracker.dal.repositories.AccountRepository;
 import com.example.fintracker.dal.repositories.DataCallback;
 
@@ -50,12 +51,14 @@ import java.util.concurrent.Executors;
 public class AccountService {
 
     private final AppDatabase database;
+    private final Application application;
     private final AccountRepository accountRepository;
     private final ExecutorService executorService;
     private final Executor mainThreadExecutor;
 
     public AccountService(@NonNull Application application) {
         this.database = AppDatabase.getInstance(application);
+        this.application = application;
         this.accountRepository = new AccountRepository(application);
         this.executorService = Executors.newSingleThreadExecutor();
         this.mainThreadExecutor = new android.os.Handler(
@@ -65,11 +68,13 @@ public class AccountService {
     // Конструктор для тестов
     public AccountService(
             @NonNull AppDatabase database,
+            @NonNull Application application,
             @NonNull AccountRepository accountRepository,
             @NonNull ExecutorService executorService,
             @NonNull Executor mainThreadExecutor
     ) {
         this.database = database;
+        this.application = application;
         this.accountRepository = accountRepository;
         this.executorService = executorService;
         this.mainThreadExecutor = mainThreadExecutor;
@@ -140,6 +145,84 @@ public class AccountService {
                 }
             });
         });
+    }
+
+    /**
+     * Создаёт новый спільный счёт для текущего залогиненного пользователя.
+     *
+     * @param name           Название счёта (1–30 символов, без пробелов по краям)
+     * @param initialBalance Начальный баланс (≥ 0)
+     * @param callback       Результат операции
+     */
+    public void createSharedAccount(
+            @NonNull String name,
+            double initialBalance,
+            @NonNull AccountCallback callback
+    ) {
+        String ownerId;
+        try {
+            ownerId = SessionManager.getInstance().requireUserId();
+        } catch (IllegalStateException e) {
+            deliverFailure(callback, "Необходимо войти в аккаунт");
+            return;
+        }
+
+        final String ownerIdFinal = ownerId;
+
+        executorService.execute(() -> {
+            try {
+                AccountValidator.validateAccountCreation(name.trim(), initialBalance);
+            } catch (IllegalArgumentException e) {
+                deliverFailure(callback, e.getMessage());
+                return;
+            }
+
+            // Проверяем дубликат по имени у этого пользователя
+            AccountEntity duplicate = database.accountDao()
+                    .getAccountByNameAndOwnerSync(name.trim(), ownerIdFinal);
+            if (duplicate != null) {
+                deliverFailure(callback, "Счёт с таким названием уже существует");
+                return;
+            }
+
+            String now = isoNow();
+            AccountEntity account = new AccountEntity();
+            account.id        = UUID.randomUUID().toString();
+            account.name      = name.trim();
+            account.ownerId   = ownerIdFinal;
+            account.isShared  = true;
+            account.balance   = initialBalance;
+            account.isSynced  = false;
+            account.isDeleted = false;
+            account.updatedAt = now;
+
+            accountRepository.insertAccount(account, new DataCallback<Void>() {
+                @Override
+                public void onSuccess(@Nullable Void data) {
+                    deliverSuccess(callback, account);
+                }
+
+                @Override
+                public void onError(@NonNull Throwable throwable) {
+                    deliverFailure(callback, "Ошибка создания счёта: " + throwable.getMessage());
+                }
+            });
+        });
+    }
+
+    /**
+     * Creates a default account for a new user after registration.
+     * Creates a personal account with name "Основний рахунок" and 0 balance.
+     *
+     * @param username The username to include in the account name
+     * @param callback Result of the operation
+     */
+    public void createDefaultAccount(
+            @NonNull String username,
+            @NonNull AccountCallback callback
+    ) {
+        String accountName = "Основний рахунок";
+        createAccount(accountName, 0.0, callback);
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -366,5 +449,60 @@ public class AccountService {
 
     public interface AccountCallback {
         void onResult(@NonNull AccountResult result);
+    }
+
+    /**
+     * Добавляет пользователя в совместный счёт по имени пользователя.
+     * Проверяет существование пользователя и добавляет его в счёт.
+     *
+     * @param accountId ID совместного счёта
+     * @param username  Имя пользователя для добавления
+     * @param callback  Результат операции
+     */
+    public void addUserToAccount(
+            @NonNull String accountId,
+            @NonNull String username,
+            @NonNull AccountCallback callback
+    ) {
+        String currentUserId;
+        try {
+            currentUserId = SessionManager.getInstance().requireUserId();
+        } catch (IllegalStateException e) {
+            deliverFailure(callback, "Необходимо войти в аккаунт");
+            return;
+        }
+
+        executorService.execute(() -> {
+            // Найти пользователя по имени
+            UserEntity targetUser = database.userDao().getUserByNameSync(username.trim());
+            if (targetUser == null) {
+                deliverFailure(callback, "Пользователь с таким именем не найден");
+                return;
+            }
+
+            // Проверить, что счёт существует и является совместным
+            AccountEntity account = database.accountDao().getAccountByIdSync(accountId);
+            if (account == null) {
+                deliverFailure(callback, "Счёт не найден");
+                return;
+            }
+            if (!account.isShared) {
+                deliverFailure(callback, "Счёт не является совместным");
+                return;
+            }
+
+            // Использовать SharedAccountService для добавления участника
+            SharedAccountService sharedService = new SharedAccountService(application);
+            sharedService.addMember(accountId, targetUser.id, new SharedAccountService.SharedAccountCallback() {
+                @Override
+                public void onResult(@NonNull SharedAccountService.SharedAccountResult result) {
+                    if (result.isSuccess()) {
+                        deliverSuccess(callback, account);
+                    } else {
+                        deliverFailure(callback, result.getErrorMessage());
+                    }
+                }
+            });
+        });
     }
 }
