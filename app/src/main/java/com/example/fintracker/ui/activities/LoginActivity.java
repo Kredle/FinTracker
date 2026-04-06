@@ -59,11 +59,9 @@ public class LoginActivity extends AppCompatActivity {
     private Button loginButton;
     private Button registerButton;
 
-    // ── Данные для теста ──────────────────────────────
     private static final String TEST_EMAIL    = "test@example.com";
     private static final String TEST_USERNAME = "testuser";
     private static final String TEST_PASSWORD = "password123";
-    // ─────────────────────────────────────────────────
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -80,7 +78,7 @@ public class LoginActivity extends AppCompatActivity {
             Log.d(TAG, "LoginActivity initialization completed - user must login manually");
             // REMOVED: Automatic login check - users MUST login or register manually
         } catch (Exception e) {
-            Log.e(TAG, "❌ Critical error in LoginActivity onCreate: " + e.getMessage(), e);
+            Log.e(TAG, "Critical error in LoginActivity onCreate: " + e.getMessage(), e);
             Toast.makeText(this, "Критична помилка при завантаженні: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
@@ -96,7 +94,7 @@ public class LoginActivity extends AppCompatActivity {
             registerButton = findViewById(R.id.register_button);
             
             if (loginEmail == null || loginPassword == null || loginButton == null || registerButton == null) {
-                Log.e(TAG, "❌ Деякі UI елементи не знайдені в layout!");
+                Log.e(TAG, "Деякі UI елементи не знайдені в layout!");
                 Toast.makeText(this, "Помилка при завантаженні UI", Toast.LENGTH_LONG).show();
             }
         } catch (Exception e) {
@@ -151,7 +149,7 @@ public class LoginActivity extends AppCompatActivity {
                 });
                 
                 if (loginResult.isSuccess()) {
-                    Log.d(TAG, "✅ Вхід успішний!");
+                    Log.d(TAG, "Вхід успішний!");
                     // Sync invitations from cloud
                     AccountInvitationService invitationService = new AccountInvitationService(AppDatabase.getInstance(getApplication()).accountInvitationDao());
                     invitationService.syncInvitationsFromCloud(email, new AccountInvitationService.Callback<Void>() {
@@ -168,13 +166,13 @@ public class LoginActivity extends AppCompatActivity {
                 } else {
                     runOnUiThread(() -> 
                         Toast.makeText(LoginActivity.this, 
-                            "❌ Помилка входу: " + loginResult.getErrorMessage(), 
+                            "Помилка входу: " + loginResult.getErrorMessage(), 
                             Toast.LENGTH_LONG).show()
                     );
                 }
             });
         } catch (Exception e) {
-            Log.e(TAG, "❌ Помилка при вході: " + e.getMessage(), e);
+            Log.e(TAG, "Помилка при вході: " + e.getMessage(), e);
             // Reset button state on error
             runOnUiThread(() -> {
                 loginButton.setEnabled(true);

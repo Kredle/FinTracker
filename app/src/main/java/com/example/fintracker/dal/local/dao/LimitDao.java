@@ -98,30 +98,22 @@ public interface LimitDao {
     @Nullable
     LimitEntity getLimitByIdSync(@NonNull String limitId);
 
-    // ── Синхронизация ──
-
     @Query("SELECT * FROM limits WHERE isSynced = 0")
     List<LimitEntity> getUnsyncedLimits();
 
-    // ── Устаревшие методы (оставлены для обратной совместимости) ──
-
-    /** @deprecated Используй {@link #getAccountWideLimit(String)} */
     @Deprecated
     @Query("SELECT * FROM limits WHERE accountId = :accountId AND tagId IS NULL AND isDeleted = 0 ORDER BY updatedAt DESC LIMIT 1")
     LiveData<LimitEntity> getAccountWideLimitByAccountId(@NonNull String accountId);
 
-    /** @deprecated Используй {@link #getAccountWideLimitSync(String)} */
     @Deprecated
     @Query("SELECT * FROM limits WHERE accountId = :accountId AND tagId IS NULL AND isDeleted = 0 ORDER BY updatedAt DESC LIMIT 1")
     @Nullable
     LimitEntity getAccountWideLimitByAccountIdSync(@NonNull String accountId);
 
-    /** @deprecated Используй {@link #getTagWideLimit(String, String)} */
     @Deprecated
     @Query("SELECT * FROM limits WHERE accountId = :accountId AND tagId = :tagId AND isDeleted = 0 ORDER BY updatedAt DESC LIMIT 1")
     LiveData<LimitEntity> getLimitByAccountAndTag(@NonNull String accountId, @NonNull String tagId);
 
-    /** @deprecated Используй {@link #getTagWideLimitSync(String, String)} */
     @Deprecated
     @Query("SELECT * FROM limits WHERE accountId = :accountId AND tagId = :tagId AND isDeleted = 0 ORDER BY updatedAt DESC LIMIT 1")
     @Nullable

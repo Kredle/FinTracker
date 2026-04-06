@@ -8,19 +8,17 @@ import androidx.room.PrimaryKey;
 public class AccountEntity {
     @PrimaryKey
     @NonNull
-    public String id; // UUID
+    public String id;
 
     public String name;
     public String ownerId;
     public boolean isShared;
     public double balance;
 
-    // For Firebase <=> offline sync
     public boolean isSynced = false;
     public boolean isDeleted = false;
     public String updatedAt;
 
-    // Конструктор без аргументів для Room
     public AccountEntity() {
         this.id = "";
         this.name = "";

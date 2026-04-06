@@ -8,18 +8,16 @@ import androidx.room.PrimaryKey;
 public class TagEntity {
     @PrimaryKey
     @NonNull
-    public String id; // UUID
+    public String id;
 
     public String name;
     public String iconName;
     public String ownerId;
 
-    // For Firebase <=> offline sync
     public boolean isSynced = false;
     public boolean isDeleted = false;
     public String updatedAt;
 
-    // Конструктор без аргументів для Room
     public TagEntity() {
         this.id = "";
         this.name = "";

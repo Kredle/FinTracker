@@ -8,18 +8,16 @@ import androidx.room.PrimaryKey;
 public class SharedAccountMemberEntity {
     @PrimaryKey
     @NonNull
-    public String id; // UUID
+    public String id;
 
     public String accountId;
     public String userId;
-    public String role; // e.g., "ADMIN" or "USER"
+    public String role;
 
-    // For Firebase <=> offline sync
     public boolean isSynced = false;
     public boolean isDeleted = false;
     public String updatedAt;
 
-    // Конструктор без аргументів для Room
     public SharedAccountMemberEntity() {
         this.id = "";
         this.accountId = "";

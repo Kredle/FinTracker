@@ -18,12 +18,10 @@ public class UserEntity {
     public boolean isBankSyncEnabled;
     public double generalLimit;
 
-    // For Firebase <=> offline sync
     public boolean isSynced = false;
     public boolean isDeleted = false;
     public String updatedAt;
 
-    // Конструктор без аргументів для Room
     public UserEntity() {
         this.id = "";
         this.name = "";
@@ -37,7 +35,6 @@ public class UserEntity {
         this.updatedAt = "";
     }
 
-    // Конструктор з параметрами для зручності
     @Ignore
     public UserEntity(String id, String name, String email, String password) {
         this.id = id;

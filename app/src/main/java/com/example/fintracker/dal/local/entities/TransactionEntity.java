@@ -8,24 +8,22 @@ import androidx.room.PrimaryKey;
 public class TransactionEntity {
     @PrimaryKey
     @NonNull
-    public String id; // UUID
+    public String id;
 
     public String accountId;
     public String userId;
-    public String tagId; // Nullable
+    public String tagId;
     public double amount;
-    public String type; // e.g., "INCOME" or "EXPENSE"
+    public String type;
     public String title;
-    public String description; // Nullable
+    public String description;
     public String timestamp;
-    public String bankMessageHash; // Nullable
+    public String bankMessageHash;
 
-    // For Firebase <=> offline sync
     public boolean isSynced = false;
     public boolean isDeleted = false;
     public String updatedAt;
 
-    // Конструктор без аргументів для Room
     public TransactionEntity() {
         this.id = "";
         this.accountId = "";
@@ -40,3 +38,4 @@ public class TransactionEntity {
         this.updatedAt = "";
     }
 }
+

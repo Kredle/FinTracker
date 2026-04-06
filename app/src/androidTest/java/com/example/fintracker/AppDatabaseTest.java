@@ -47,10 +47,6 @@ import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory;
 
 import static org.junit.Assert.*;
 
-/**
- * Instrumented test for AppDatabase and related validators.
- * Uses an in-memory Room database for isolated, repeatable tests.
- */
 @RunWith(AndroidJUnit4.class)
 public class AppDatabaseTest {
 
@@ -65,9 +61,8 @@ public class AppDatabaseTest {
     @Before
     public void setUp() {
         Context context = ApplicationProvider.getApplicationContext();
-        // Create an in-memory database (data is cleared after each test)
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase.class)
-                .allowMainThreadQueries() // Only for testing
+                .allowMainThreadQueries()
                 .build();
 
         userDao = database.userDao();
@@ -83,24 +78,12 @@ public class AppDatabaseTest {
         database.close();
     }
 
-    /**
-     * Helper method to generate consistent ISO 8601 timestamp strings.
-     * Uses SQLite-compatible format: YYYY-MM-DD HH:MM:SS
-     */
     private String getCurrentTimestamp() {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US);
         sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
         return sdf.format(new Date());
     }
 
-    /**
-     * Helper method to repeat a character/string n times.
-     * Compatible with API 24+ (String.repeat is only available in API 33+).
-     *
-     * @param str The string to repeat
-     * @param count Number of times to repeat
-     * @return The repeated string
-     */
     private String repeatString(String str, int count) {
         StringBuilder sb = new StringBuilder(str.length() * count);
         for (int i = 0; i < count; i++) {
